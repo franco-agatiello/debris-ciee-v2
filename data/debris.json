@@ -1,0 +1,41 @@
+[
+  {
+    "nombre": "Tiangong-1",
+    "pais": "China",
+    "tamano_caida_kg": 8500,
+    "material_principal": "Aluminio",
+    "fecha": "2018-04-02",
+    "inclinacion_orbita": 42.8,
+    "lugar_caida": {"lat": -13.6, "lon": -164.3},
+    "imagen": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/88/Tiangong-1_Model.jpg/320px-Tiangong-1_Model.jpg",
+    "ultima_orbita": [
+      [57.0, 85.0],
+      [40.0, 50.0],
+      [20.0, 10.0],
+      [0.0, -20.0],
+      [-20.0, -80.0],
+      [-13.6, -164.3]
+    ]
+  },
+  {
+    "nombre": "Cosmos 954",
+    "pais": "Rusia",
+    "tamano_caida_kg": 900,
+    "material_principal": "Titanio",
+    "fecha": "1978-01-24",
+    "inclinacion_orbita": 65.0,
+    "lugar_caida": {"lat": 62.0, "lon": -120.0},
+    "imagen": "img/240628-space-debris-2-ew-1216p-753a6f.webp"
+  },
+  {
+    "nombre": "Skylab",
+    "pais": "Estados Unidos",
+    "tamano_caida_kg": 75000,
+    "material_principal": "Aluminio",
+    "fecha": "1979-07-11",
+    "inclinacion_orbita": 50.0,
+    "lugar_caida": {"lat": -31.0, "lon": 122.0},
+    "imagen": "img/Debris_landed_in_Texas.jpg"
+  }
+  // ... resto igual ...
+]
