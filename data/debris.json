@@ -9,11 +9,11 @@
     "lugar_caida": {"lat": -13.6, "lon": -164.3},
     "imagen": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/88/Tiangong-1_Model.jpg/320px-Tiangong-1_Model.jpg",
     "ultima_orbita": [
-      [57.0, 85.0],
-      [40.0, 50.0],
-      [20.0, 10.0],
-      [0.0, -20.0],
-      [-20.0, -80.0],
+      [50.0, 70.0],
+      [42.0, 45.0],
+      [30.0, 10.0],
+      [10.0, -20.0],
+      [-10.0, -60.0],
       [-13.6, -164.3]
     ]
   },
