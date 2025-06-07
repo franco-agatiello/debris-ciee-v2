@@ -155,7 +155,24 @@ function actualizarMapa() {
   actualizarBotonesModo();
 }
 
-// Función global para dibujar la órbita
+// --- Suavizado/interpolación de la órbita ---
+function interpolateOrbit(coords, steps = 10) {
+  let output = [];
+  for (let i = 0; i < coords.length - 1; i++) {
+    let [lat1, lon1] = coords[i];
+    let [lat2, lon2] = coords[i+1];
+    for (let s = 0; s < steps; s++) {
+      let t = s / steps;
+      let lat = lat1 + t * (lat2 - lat1);
+      let lon = lon1 + t * (lon2 - lon1);
+      output.push([lat, lon]);
+    }
+  }
+  output.push(coords[coords.length-1]);
+  return output;
+}
+
+// Función global para dibujar la órbita suavizada
 window.mostrarOrbitas = function(idx) {
   if (currentOrbitLine) {
     mapa.removeLayer(currentOrbitLine);
@@ -163,7 +180,13 @@ window.mostrarOrbitas = function(idx) {
   }
   const d = filtrarDatos()[idx];
   if (d.ultima_orbita && d.ultima_orbita.length > 1) {
-    currentOrbitLine = L.polyline(d.ultima_orbita, {color: 'orange', weight: 3, opacity: 0.8}).addTo(mapa);
+    const interpolated = interpolateOrbit(d.ultima_orbita, 20); // 20 subsegmentos por tramo
+    currentOrbitLine = L.polyline(interpolated, {
+      color: 'orange',
+      weight: 3,
+      opacity: 0.8,
+      smoothFactor: 1.5 // más alto = más suavizado
+    }).addTo(mapa);
     mapa.fitBounds(currentOrbitLine.getBounds(), {maxZoom: 4});
   }
 };
