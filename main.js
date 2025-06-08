@@ -155,24 +155,42 @@ function actualizarMapa() {
   actualizarBotonesModo();
 }
 
-// --- Suavizado/interpolación de la órbita ---
-function interpolateOrbit(coords, steps = 10) {
+// --- Interpolación geodésica fidedigna y suave de la órbita ---
+function interpolateGeodesic(p1, p2, n) {
+  function toRad(deg) { return deg * Math.PI / 180; }
+  function toDeg(rad) { return rad * 180 / Math.PI; }
+  let lat1 = toRad(p1[0]), lon1 = toRad(p1[1]);
+  let lat2 = toRad(p2[0]), lon2 = toRad(p2[1]);
+  let d = 2 * Math.asin(Math.sqrt(
+    Math.sin((lat2 - lat1)/2)**2 +
+    Math.cos(lat1)*Math.cos(lat2)*Math.sin((lon2-lon1)/2)**2
+  ));
+  if (d === 0) return [p1];
+  let coords = [];
+  for (let i = 0; i <= n; i++) {
+    let f = i / n;
+    let A = Math.sin((1-f)*d) / Math.sin(d);
+    let B = Math.sin(f*d) / Math.sin(d);
+    let x = A * Math.cos(lat1) * Math.cos(lon1) + B * Math.cos(lat2) * Math.cos(lon2);
+    let y = A * Math.cos(lat1) * Math.sin(lon1) + B * Math.cos(lat2) * Math.sin(lon2);
+    let z = A * Math.sin(lat1) + B * Math.sin(lat2);
+    let lat = Math.atan2(z, Math.sqrt(x*x + y*y));
+    let lon = Math.atan2(y, x);
+    coords.push([toDeg(lat), toDeg(lon)]);
+  }
+  return coords;
+}
+
+function interpolateOrbitGeodesic(coords, steps = 30) {
   let output = [];
   for (let i = 0; i < coords.length - 1; i++) {
-    let [lat1, lon1] = coords[i];
-    let [lat2, lon2] = coords[i+1];
-    for (let s = 0; s < steps; s++) {
-      let t = s / steps;
-      let lat = lat1 + t * (lat2 - lat1);
-      let lon = lon1 + t * (lon2 - lon1);
-      output.push([lat, lon]);
-    }
+    let segment = interpolateGeodesic(coords[i], coords[i+1], steps);
+    if (i > 0) segment.shift();
+    output.push(...segment);
   }
-  output.push(coords[coords.length-1]);
   return output;
 }
 
-// Función global para dibujar la órbita suavizada
 window.mostrarOrbitas = function(idx) {
   if (currentOrbitLine) {
     mapa.removeLayer(currentOrbitLine);
@@ -180,12 +198,12 @@ window.mostrarOrbitas = function(idx) {
   }
   const d = filtrarDatos()[idx];
   if (d.ultima_orbita && d.ultima_orbita.length > 1) {
-    const interpolated = interpolateOrbit(d.ultima_orbita, 20); // 20 subsegmentos por tramo
+    const interpolated = interpolateOrbitGeodesic(d.ultima_orbita, 30); // 30 pasos por tramo
     currentOrbitLine = L.polyline(interpolated, {
       color: 'orange',
       weight: 3,
       opacity: 0.8,
-      smoothFactor: 1.5 // más alto = más suavizado
+      smoothFactor: 2
     }).addTo(mapa);
     mapa.fitBounds(currentOrbitLine.getBounds(), {maxZoom: 4});
   }
