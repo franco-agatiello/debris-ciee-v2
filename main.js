@@ -106,11 +106,12 @@ function actualizarMapa() {
         Masa caída: ${d.tamano_caida_kg} kg<br>
         Material: ${d.material_principal}<br>
         Inclinación órbita: ${d.inclinacion_orbita ?? "?"}°<br>
-        Fecha: ${d.fecha.substring(0,10)}<br>
+        Fecha: ${d.fecha}<br>
         ${d.imagen ? `<img src="${d.imagen}" alt="${d.nombre}"><br>` : ''}
       `;
-      if (d.tle && d.fecha) {
-        popupContenido += `<button class="btn btn-sm btn-outline-warning mt-2" onclick="mostrarOrbitas(${idx})">Ver última órbita</button>`;
+      // Si tiene TLE, muestra el botón para calcular la órbita
+      if (d.tle && d.tle.length === 2) {
+        popupContenido += `<button class="btn btn-sm btn-outline-warning mt-2" onclick="mostrarOrbitasTLE(${idx})">Ver última órbita (TLE)</button>`;
       }
       const marker = L.marker([d.lugar_caida.lat, d.lugar_caida.lon], {icon: marcadorPorFecha(d.fecha)})
         .bindPopup(popupContenido, {autoPan: true});
@@ -155,49 +156,47 @@ function actualizarMapa() {
   actualizarBotonesModo();
 }
 
-// Calcula la última órbita antes de la fecha de reentrada usando TLE y satellite.js
-function calcularUltimaOrbita(tle, fechaReentrada, pasos = 120) {
-  // fechaReentrada: Date JS
-  const satrec = satellite.twoline2satrec(tle[0], tle[1]);
-  const meanMotion = satrec.no; // [rad/min]
-  const periodMin = (2 * Math.PI) / meanMotion; // período orbital en minutos
-  const t0 = new Date(fechaReentrada.getTime() - periodMin * 60000); // una órbita antes
-  const puntos = [];
-  for (let i = 0; i <= pasos; i++) {
-    const frac = i / pasos;
-    const t = new Date(t0.getTime() + frac * periodMin * 60000);
-    const posVel = satellite.propagate(
-      satrec,
-      t.getUTCFullYear(), t.getUTCMonth() + 1, t.getUTCDate(),
-      t.getUTCHours(), t.getUTCMinutes(), t.getUTCSeconds()
-    );
-    if (!posVel.position) continue;
-    const gmst = satellite.gstime(t);
-    const geo = satellite.eciToGeodetic(posVel.position, gmst);
-    let lat = satellite.degreesLat(geo.latitude);
-    let lon = satellite.degreesLong(geo.longitude);
-    // Leaflet acepta -180/+180, pero a veces satellite.js da valores fuera de rango:
-    if (lon < -180) lon += 360;
-    if (lon > 180) lon -= 360;
-    puntos.push([lat, lon]);
-  }
-  return puntos;
-}
-
-// Dibuja la órbita de la última vuelta antes de la caída usando TLE y fecha
-window.mostrarOrbitas = function(idx) {
+// Dibuja la órbita calculada a partir del TLE
+window.mostrarOrbitasTLE = function(idx) {
   if (currentOrbitLine) {
     mapa.removeLayer(currentOrbitLine);
     currentOrbitLine = null;
   }
   const d = filtrarDatos()[idx];
-  if (d.tle && d.fecha) {
-    const fecha = new Date(d.fecha);
-    const ruta = calcularUltimaOrbita(d.tle, fecha, 180); // 180 puntos: muy suave
-    currentOrbitLine = L.polyline(ruta, {color: 'orange', weight: 3, opacity: 0.8, smoothFactor: 1}).addTo(mapa);
-    mapa.fitBounds(currentOrbitLine.getBounds(), {maxZoom: 4});
+  if (d.tle && d.tle.length === 2) {
+    // Calcula trayectoria
+    const points = calcularTrayectoriaDesdeTLE(d.tle, d.fecha, d.lugar_caida);
+    if (points.length > 1) {
+      currentOrbitLine = L.polyline(points, {color: 'orange', weight: 3, opacity: 0.8}).addTo(mapa);
+      mapa.fitBounds(currentOrbitLine.getBounds(), {maxZoom: 4});
+    }
   }
 };
+
+// Calcula la trayectoria de la última órbita antes de la reentrada, asumiendo fecha y lugar_caida del debris
+function calcularTrayectoriaDesdeTLE(tleArr, fechaReentrada, lugarCaida) {
+  const satrec = satellite.twoline2satrec(tleArr[0], tleArr[1]);
+  // Fecha de reentrada como punto final
+  const epoch = new Date(fechaReentrada + 'T00:00:00Z');
+  // Número de minutos de una órbita (aprox 90min para LEO)
+  const minutosOrbita = 90;
+  const pasos = 60;
+  let points = [];
+  for (let i = minutosOrbita; i > 0; i -= minutosOrbita/pasos) {
+    const t = new Date(epoch.getTime() - i*60*1000);
+    const gmst = satellite.gstime(t);
+    const pos = satellite.propagate(satrec, t);
+    if (pos.position) {
+      const geo = satellite.eciToGeodetic(pos.position, gmst);
+      const lat = satellite.degreesLat(geo.latitude);
+      const lon = satellite.degreesLong(geo.longitude);
+      points.push([lat, lon]);
+    }
+  }
+  // Añade el punto de reentrada al final
+  points.push([lugarCaida.lat, lugarCaida.lon]);
+  return points;
+}
 
 function mostrarLeyendaPuntos() {
   leyendaPuntos = L.control({position: 'bottomright'});
