@@ -109,7 +109,6 @@ function actualizarMapa() {
         Fecha: ${d.fecha}<br>
         ${d.imagen ? `<img src="${d.imagen}" alt="${d.nombre}"><br>` : ''}
       `;
-      // Si tiene TLE, muestra el botón para calcular la órbita
       if (d.tle && d.tle.length === 2) {
         popupContenido += `<button class="btn btn-sm btn-outline-warning mt-2" onclick="mostrarOrbitasTLE(${idx})">Ver última órbita (TLE)</button>`;
       }
@@ -173,12 +172,10 @@ window.mostrarOrbitasTLE = function(idx) {
   }
 };
 
-// Calcula la trayectoria de la última órbita antes de la reentrada, asumiendo fecha y lugar_caida del debris
+// Calcula la trayectoria de la última órbita antes de la reentrada y fuerza el último punto a ser el lugar de caída
 function calcularTrayectoriaDesdeTLE(tleArr, fechaReentrada, lugarCaida) {
   const satrec = satellite.twoline2satrec(tleArr[0], tleArr[1]);
-  // Fecha de reentrada como punto final
   const epoch = new Date(fechaReentrada + 'T00:00:00Z');
-  // Número de minutos de una órbita (aprox 90min para LEO)
   const minutosOrbita = 90;
   const pasos = 60;
   let points = [];
@@ -193,7 +190,7 @@ function calcularTrayectoriaDesdeTLE(tleArr, fechaReentrada, lugarCaida) {
       points.push([lat, lon]);
     }
   }
-  // Añade el punto de reentrada al final
+  // Fuerza el último punto a ser exactamente el lugar de caída (aunque la simulación no llegue justo ahí)
   points.push([lugarCaida.lat, lugarCaida.lon]);
   return points;
 }
