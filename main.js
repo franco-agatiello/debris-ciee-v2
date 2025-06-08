@@ -1,7 +1,7 @@
 let debris = [];
 let mapa, capaPuntos, capaCalor, modo = "puntos";
 let leyendaPuntos, leyendaCalor;
-let currentOrbitLine = null; // guarda la órbita dibujada
+let currentOrbitLine = null;
 
 const iconoAmarillo = L.icon({
   iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-yellow.png',
@@ -106,10 +106,10 @@ function actualizarMapa() {
         Masa caída: ${d.tamano_caida_kg} kg<br>
         Material: ${d.material_principal}<br>
         Inclinación órbita: ${d.inclinacion_orbita ?? "?"}°<br>
-        Fecha: ${d.fecha}<br>
+        Fecha: ${d.fecha.substring(0,10)}<br>
         ${d.imagen ? `<img src="${d.imagen}" alt="${d.nombre}"><br>` : ''}
       `;
-      if (d.ultima_orbita && d.ultima_orbita.length > 1) {
+      if (d.tle && d.fecha) {
         popupContenido += `<button class="btn btn-sm btn-outline-warning mt-2" onclick="mostrarOrbitas(${idx})">Ver última órbita</button>`;
       }
       const marker = L.marker([d.lugar_caida.lat, d.lugar_caida.lon], {icon: marcadorPorFecha(d.fecha)})
@@ -155,56 +155,46 @@ function actualizarMapa() {
   actualizarBotonesModo();
 }
 
-// --- Interpolación geodésica fidedigna y suave de la órbita ---
-function interpolateGeodesic(p1, p2, n) {
-  function toRad(deg) { return deg * Math.PI / 180; }
-  function toDeg(rad) { return rad * 180 / Math.PI; }
-  let lat1 = toRad(p1[0]), lon1 = toRad(p1[1]);
-  let lat2 = toRad(p2[0]), lon2 = toRad(p2[1]);
-  let d = 2 * Math.asin(Math.sqrt(
-    Math.sin((lat2 - lat1)/2)**2 +
-    Math.cos(lat1)*Math.cos(lat2)*Math.sin((lon2-lon1)/2)**2
-  ));
-  if (d === 0) return [p1];
-  let coords = [];
-  for (let i = 0; i <= n; i++) {
-    let f = i / n;
-    let A = Math.sin((1-f)*d) / Math.sin(d);
-    let B = Math.sin(f*d) / Math.sin(d);
-    let x = A * Math.cos(lat1) * Math.cos(lon1) + B * Math.cos(lat2) * Math.cos(lon2);
-    let y = A * Math.cos(lat1) * Math.sin(lon1) + B * Math.cos(lat2) * Math.sin(lon2);
-    let z = A * Math.sin(lat1) + B * Math.sin(lat2);
-    let lat = Math.atan2(z, Math.sqrt(x*x + y*y));
-    let lon = Math.atan2(y, x);
-    coords.push([toDeg(lat), toDeg(lon)]);
+// Calcula la última órbita antes de la fecha de reentrada usando TLE y satellite.js
+function calcularUltimaOrbita(tle, fechaReentrada, pasos = 120) {
+  // fechaReentrada: Date JS
+  const satrec = satellite.twoline2satrec(tle[0], tle[1]);
+  const meanMotion = satrec.no; // [rad/min]
+  const periodMin = (2 * Math.PI) / meanMotion; // período orbital en minutos
+  const t0 = new Date(fechaReentrada.getTime() - periodMin * 60000); // una órbita antes
+  const puntos = [];
+  for (let i = 0; i <= pasos; i++) {
+    const frac = i / pasos;
+    const t = new Date(t0.getTime() + frac * periodMin * 60000);
+    const posVel = satellite.propagate(
+      satrec,
+      t.getUTCFullYear(), t.getUTCMonth() + 1, t.getUTCDate(),
+      t.getUTCHours(), t.getUTCMinutes(), t.getUTCSeconds()
+    );
+    if (!posVel.position) continue;
+    const gmst = satellite.gstime(t);
+    const geo = satellite.eciToGeodetic(posVel.position, gmst);
+    let lat = satellite.degreesLat(geo.latitude);
+    let lon = satellite.degreesLong(geo.longitude);
+    // Leaflet acepta -180/+180, pero a veces satellite.js da valores fuera de rango:
+    if (lon < -180) lon += 360;
+    if (lon > 180) lon -= 360;
+    puntos.push([lat, lon]);
   }
-  return coords;
+  return puntos;
 }
 
-function interpolateOrbitGeodesic(coords, steps = 30) {
-  let output = [];
-  for (let i = 0; i < coords.length - 1; i++) {
-    let segment = interpolateGeodesic(coords[i], coords[i+1], steps);
-    if (i > 0) segment.shift();
-    output.push(...segment);
-  }
-  return output;
-}
-
+// Dibuja la órbita de la última vuelta antes de la caída usando TLE y fecha
 window.mostrarOrbitas = function(idx) {
   if (currentOrbitLine) {
     mapa.removeLayer(currentOrbitLine);
     currentOrbitLine = null;
   }
   const d = filtrarDatos()[idx];
-  if (d.ultima_orbita && d.ultima_orbita.length > 1) {
-    const interpolated = interpolateOrbitGeodesic(d.ultima_orbita, 30); // 30 pasos por tramo
-    currentOrbitLine = L.polyline(interpolated, {
-      color: 'orange',
-      weight: 3,
-      opacity: 0.8,
-      smoothFactor: 2
-    }).addTo(mapa);
+  if (d.tle && d.fecha) {
+    const fecha = new Date(d.fecha);
+    const ruta = calcularUltimaOrbita(d.tle, fecha, 180); // 180 puntos: muy suave
+    currentOrbitLine = L.polyline(ruta, {color: 'orange', weight: 3, opacity: 0.8, smoothFactor: 1}).addTo(mapa);
     mapa.fitBounds(currentOrbitLine.getBounds(), {maxZoom: 4});
   }
 };
