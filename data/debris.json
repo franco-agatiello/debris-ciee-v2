@@ -7,13 +7,17 @@
     "fecha": "2018-04-02",
     "inclinacion_orbita": 42.8,
     "lugar_caida": {"lat": -13.6, "lon": -164.3},
-    "imagen": "img/Debris_landed_in_Texas.jpg",
+    "imagen": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/88/Tiangong-1_Model.jpg/320px-Tiangong-1_Model.jpg",
     "ultima_orbita": [
-      [50.0, 70.0],
-      [42.0, 45.0],
-      [30.0, 10.0],
-      [10.0, -20.0],
-      [-10.0, -60.0],
+      [40, 120],
+      [30, 100],
+      [20, 80],
+      [10, 60],
+      [0, 40],
+      [-10, 20],
+      [-20, 0],
+      [-25, -40],
+      [-15, -80],
       [-13.6, -164.3]
     ]
   },
