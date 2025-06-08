@@ -155,7 +155,28 @@ function actualizarMapa() {
   actualizarBotonesModo();
 }
 
-// Dibuja la órbita calculada a partir del TLE
+// --- FIX para evitar el trazo cruzando el antimeridiano ---
+function segmentarPolilineaAntimeridiano(points) {
+  if (points.length < 2) return [points];
+  const segments = [];
+  let current = [points[0]];
+  for (let i = 1; i < points.length; i++) {
+    const prev = points[i - 1];
+    const curr = points[i];
+    const dLon = Math.abs(curr[1] - prev[1]);
+    if (dLon > 180) {
+      // Corta el segmento aquí
+      segments.push(current);
+      current = [curr];
+    } else {
+      current.push(curr);
+    }
+  }
+  if (current.length > 1) segments.push(current);
+  return segments;
+}
+
+// Dibuja la órbita calculada a partir del TLE y soluciona el cruce del antimeridiano
 window.mostrarOrbitasTLE = function(idx) {
   if (currentOrbitLine) {
     mapa.removeLayer(currentOrbitLine);
@@ -165,10 +186,13 @@ window.mostrarOrbitasTLE = function(idx) {
   if (d.tle && d.tle.length === 2) {
     // Calcula trayectoria
     const points = calcularTrayectoriaDesdeTLE(d.tle, d.fecha, d.lugar_caida);
-    if (points.length > 1) {
-      currentOrbitLine = L.polyline(points, {color: 'orange', weight: 3, opacity: 0.8}).addTo(mapa);
-      mapa.fitBounds(currentOrbitLine.getBounds(), {maxZoom: 4});
-    }
+    const segments = segmentarPolilineaAntimeridiano(points);
+    currentOrbitLine = L.layerGroup();
+    segments.forEach(seg => {
+      L.polyline(seg, {color: 'orange', weight: 3, opacity: 0.8}).addTo(currentOrbitLine);
+    });
+    currentOrbitLine.addTo(mapa);
+    if (points.length > 1) mapa.fitBounds(L.polyline(points).getBounds(), {maxZoom: 4});
   }
 };
 
@@ -186,7 +210,10 @@ function calcularTrayectoriaDesdeTLE(tleArr, fechaReentrada, lugarCaida) {
     if (pos.position) {
       const geo = satellite.eciToGeodetic(pos.position, gmst);
       const lat = satellite.degreesLat(geo.latitude);
-      const lon = satellite.degreesLong(geo.longitude);
+      let lon = satellite.degreesLong(geo.longitude);
+      // Ajuste para mantener longitudes en el rango [-180, 180]
+      if (lon < -180) lon += 360;
+      if (lon > 180) lon -= 360;
       points.push([lat, lon]);
     }
   }
