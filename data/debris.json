@@ -14,6 +14,20 @@
     ]
   },
   {
+    "nombre": "SO-42",
+    "pais": "Internacional",
+    "tamano_caida_kg": null,
+    "material_principal": null,
+    "fecha": "2005-09-05T20:02:40Z",
+    "inclinacion_orbita": 64.5554,
+    "lugar_caida": {"lat": 44.4, "lon": 59.2},
+    "imagen": null,
+    "tle": [
+      "1 26549U 00057E   05248.83516194  .00000114  00000-0  34592-4 0  2349",
+      "2 26549  64.5554  58.6749 0056162 296.3335  63.2008 14.79027512266682"
+    ]
+  },
+  {
     "nombre": "Cosmos 954",
     "pais": "Rusia",
     "tamano_caida_kg": 900,
