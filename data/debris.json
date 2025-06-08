@@ -7,7 +7,7 @@
     "fecha": "2018-04-02T00:16:00Z",
     "inclinacion_orbita": 42.8,
     "lugar_caida": {"lat": -13.6, "lon": -164.3},
-    "imagen": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/88/Tiangong-1_Model.jpg/320px-Tiangong-1_Model.jpg",
+    "imagen": "img/Debris_landed_in_Texas.jpg",
     "tle": [
       "1 37820U 11053A   18091.53402778  .00000023  00000-0  00000-0 0  9992",
       "2 37820  42.7492 195.3504 0005355  63.3946 296.7642 15.72125341 33638"
