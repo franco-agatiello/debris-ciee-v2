@@ -4,21 +4,13 @@
     "pais": "China",
     "tamano_caida_kg": 8500,
     "material_principal": "Aluminio",
-    "fecha": "2018-04-02",
+    "fecha": "2018-04-02T00:16:00Z",
     "inclinacion_orbita": 42.8,
     "lugar_caida": {"lat": -13.6, "lon": -164.3},
     "imagen": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/88/Tiangong-1_Model.jpg/320px-Tiangong-1_Model.jpg",
-    "ultima_orbita": [
-      [40, 120],
-      [30, 100],
-      [20, 80],
-      [10, 60],
-      [0, 40],
-      [-10, 20],
-      [-20, 0],
-      [-25, -40],
-      [-15, -80],
-      [-13.6, -164.3]
+    "tle": [
+      "1 37820U 11053A   18091.53402778  .00000023  00000-0  00000-0 0  9992",
+      "2 37820  42.7492 195.3504 0005355  63.3946 296.7642 15.72125341 33638"
     ]
   },
   {
@@ -26,7 +18,7 @@
     "pais": "Rusia",
     "tamano_caida_kg": 900,
     "material_principal": "Titanio",
-    "fecha": "1978-01-24",
+    "fecha": "1978-01-24T00:00:00Z",
     "inclinacion_orbita": 65.0,
     "lugar_caida": {"lat": 62.0, "lon": -120.0},
     "imagen": "img/240628-space-debris-2-ew-1216p-753a6f.webp"
@@ -36,7 +28,7 @@
     "pais": "Estados Unidos",
     "tamano_caida_kg": 75000,
     "material_principal": "Aluminio",
-    "fecha": "1979-07-11",
+    "fecha": "1979-07-11T00:00:00Z",
     "inclinacion_orbita": 50.0,
     "lugar_caida": {"lat": -31.0, "lon": 122.0},
     "imagen": "img/Debris_landed_in_Texas.jpg"
