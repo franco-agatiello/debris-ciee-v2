@@ -1,23 +1,25 @@
 [
   {
-    "nombre": "Objeto 28812",
-    "NORAD_CAT_ID": 28812,
-    "TLE_EPOCH": "2025-06-12 23:02:00",
-    "INSERT_EPOCH": "2025-06-12 23:16:21",
-    "DECAY_EPOCH": "2025-06-15 22:31:00",
-    "WINDOW": 900,
-    "REV": 8389,
-    "DIRECTION": "descendente",
-    "lat_final": -81.6,
-    "lon_final": 309.5,
-    "incl": 98.1,
-    "NEXT_REPORT": 48,
-    "ID": 50825,
-    "HIGH_INTEREST": "N",
-    "OBJECT_NUMBER": 28812,
-    "tle": [
-      "1 28812U 05031D   25162.96679837  .01575682  19246-2  15042-2 0  9993",
-      "2 28812  98.0521  77.4588 0006155 131.8881 358.7889 16.12302553 83405"
-    ]
+    "nombre": "Ejemplo Satélite",
+    "norad_id": 47634,
+    "pais": "Desconocido",
+    "tamano_caida_kg": null,
+    "material_principal": null,
+    "fecha": "2025-06-16",
+    "inclinacion_orbita": 53.0,
+    "lugar_caida": { "lat": -41.6, "lon": 126 },
+    "imagen": "",
+    "tle": {
+      "line1": "1 47634U 21012Q   25163.56460968  .01659767  25016-2  10933-2 0  9996",
+      "line2": "2 47634  53.0376 172.4246 0002724 359.6815  98.2512 16.17101529239192"
+    },
+    "reentry": {
+      "epoch": "2025-06-16T05:25:00Z",
+      "window_min": 1080,
+      "window_rev": 803,
+      "direction": "ascending",
+      "lat": -41.6,
+      "lon": 126
+    }
   }
 ]
