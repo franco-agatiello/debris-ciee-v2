@@ -137,9 +137,14 @@ function actualizarMapa() {
   actualizarBotonesModo();
 }
 
-// --------------------
-// SPLIT POLYLINE ON DATELINE
-// --------------------
+// --------- FIX DATELINE ---------
+function normalizeLongitude(lon) {
+  let l = lon;
+  while (l < -180) l += 360;
+  while (l > 180) l -= 360;
+  return l;
+}
+
 function splitPolylineOnDateline(points) {
   if (points.length < 2) return [points];
   let segments = [];
@@ -148,10 +153,11 @@ function splitPolylineOnDateline(points) {
   for (let i = 1; i < points.length; i++) {
     const prev = points[i - 1];
     const curr = points[i];
-    // Si la diferencia de longitud es mayor a 180 grados, corta la línea
-    if (Math.abs(curr[1] - prev[1]) > 180) {
-      segments.push(currentSegment);
-      currentSegment = [prev, curr];
+    const prevLon = normalizeLongitude(prev[1]);
+    const currLon = normalizeLongitude(curr[1]);
+    if (Math.abs(currLon - prevLon) > 180) {
+      if (currentSegment.length > 1) segments.push(currentSegment);
+      currentSegment = [curr];
     } else {
       currentSegment.push(curr);
     }
@@ -160,7 +166,6 @@ function splitPolylineOnDateline(points) {
   return segments;
 }
 
-// Dibuja SOLO la última órbita antes de la reentrada (máx. 90 min) y evita saltos de antimeridiano
 function mostrarOrbita(tle, epoch) {
   if (lastOrbitPolyline) {
     mapa.removeLayer(lastOrbitPolyline);
@@ -179,21 +184,21 @@ function mostrarOrbita(tle, epoch) {
       const geo = satellite.eciToGeodetic(posVel.position, gmst);
       const lat = satellite.degreesLat(geo.latitude);
       let lon = satellite.degreesLong(geo.longitude);
-      // Normalizar longitudes a [-180, 180]
-      if (lon > 180) lon -= 360;
-      if (lon < -180) lon += 360;
+      lon = normalizeLongitude(lon);
       points.push([lat, lon]);
     }
   }
-  // Rompe la polilínea en el cruce del antimeridiano
   const segments = splitPolylineOnDateline(points);
   lastOrbitPolyline = L.layerGroup();
   segments.forEach(segment => {
-    L.polyline(segment, { color: 'blue', weight: 2, opacity: 0.7 }).addTo(lastOrbitPolyline);
+    if (segment.length > 1) {
+      L.polyline(segment, { color: 'blue', weight: 2, opacity: 0.7 }).addTo(lastOrbitPolyline);
+    }
   });
   lastOrbitPolyline.addTo(mapa);
   if (points.length > 0) mapa.fitBounds(L.latLngBounds(points));
 }
+// --------- END FIX DATELINE ---------
 
 // Limpia la órbita al cerrar el popup
 function initMapa() {
