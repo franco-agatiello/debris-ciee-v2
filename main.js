@@ -138,6 +138,18 @@ function actualizarMapa() {
 }
 
 // --------- MEJORADO: Orbita continua y sin saltos ficticios ---------
+function haversineDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371;
+  const toRad = x => x * Math.PI / 180;
+  const dLat = toRad(lat2-lat1);
+  const dLon = toRad(lon2-lon1);
+  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+            Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+            Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
+}
+
 function normalizeLongitude(lon) {
   let l = lon;
   while (l < -180) l += 360;
@@ -145,8 +157,8 @@ function normalizeLongitude(lon) {
   return l;
 }
 
-// Solo corta si se cruza de +180 a -180 (o viceversa) y hay cambio de signo
-function splitPolylineOnDateline(points) {
+// Corta si la diferencia de longitud es > 300° o la distancia es muy grande (2000 km)
+function splitPolylineOnJump(points) {
   if (points.length < 2) return [points];
   let segments = [];
   let currentSegment = [points[0]];
@@ -156,8 +168,9 @@ function splitPolylineOnDateline(points) {
     const curr = points[i];
     const prevLon = normalizeLongitude(prev[1]);
     const currLon = normalizeLongitude(curr[1]);
-    // Solo corta si cruza el borde real del mapa (cambio de signo y distancia > 180)
-    if (Math.abs(currLon - prevLon) > 180 && Math.sign(currLon) !== Math.sign(prevLon)) {
+    const lonDiff = Math.abs(currLon - prevLon);
+    const dist = haversineDistance(prev[0], prevLon, curr[0], currLon);
+    if (lonDiff > 300 || dist > 2000) {
       if (currentSegment.length > 1) segments.push(currentSegment);
       currentSegment = [curr];
     } else {
@@ -177,7 +190,7 @@ function mostrarOrbita(tle, epoch) {
   const fechaReentrada = epoch ? new Date(epoch) : new Date();
   const minutosPorRev = 1440 / satrec.no;
   const tiempoTotal = Math.min(minutosPorRev, 90);
-  const paso = 0.5; // 30 segundos
+  const paso = 0.2; // 12 segundos
   const points = [];
   for (let t = -tiempoTotal; t <= 0; t += paso) {
     const fecha = new Date(fechaReentrada.getTime() + t * 60 * 1000);
@@ -193,7 +206,7 @@ function mostrarOrbita(tle, epoch) {
       }
     }
   }
-  const segments = splitPolylineOnDateline(points);
+  const segments = splitPolylineOnJump(points);
   lastOrbitPolyline = L.layerGroup();
   segments.forEach(segment => {
     if (segment.length > 1) {
