@@ -9,7 +9,7 @@ const iconoAmarillo = L.icon({
   iconAnchor: [9, 29],
   popupAnchor: [1, -30]
 });
-const iconoVerde = L.icon({
+const iconoVerde = L.L.icon({
   iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png',
   iconSize: [18, 29],
   iconAnchor: [9, 29],
@@ -113,7 +113,6 @@ function actualizarMapa() {
       `;
       const marcador = L.marker([d.lugar_caida.lat, d.lugar_caida.lon], {icon: marcadorPorFecha(d.fecha)})
         .bindPopup(popupContenido, {autoPan: true});
-      // Ajustar popup si hay imagen
       marcador.on('popupopen', function(e) {
         const imgs = e.popup._contentNode.querySelectorAll('img');
         imgs.forEach(function(img) {
@@ -137,7 +136,7 @@ function actualizarMapa() {
   actualizarBotonesModo();
 }
 
-// --------- MEJORADO: Orbita continua y sin saltos ficticios ---------
+// --------- INTERPOLACIÓN EN EL ANTIMERIDIANO ---------
 function haversineDistance(lat1, lon1, lat2, lon2) {
   const R = 6371;
   const toRad = x => x * Math.PI / 180;
@@ -157,8 +156,19 @@ function normalizeLongitude(lon) {
   return l;
 }
 
-// Corta si la diferencia de longitud es > 300° o la distancia es muy grande (2000 km)
-function splitPolylineOnJump(points) {
+function interpolateDatelineCrossing(p1, p2) {
+  let lon1 = normalizeLongitude(p1[1]);
+  let lon2 = normalizeLongitude(p2[1]);
+  let lat1 = p1[0], lat2 = p2[0];
+  let lonTarget = lon1 > 0 ? 180 : -180;
+  let deltaLon = lon2 - lon1;
+  if (Math.abs(deltaLon) < 1e-3) return null;
+  let t = (lonTarget - lon1) / deltaLon;
+  let latTarget = lat1 + (lat2 - lat1) * t;
+  return [latTarget, lonTarget];
+}
+
+function splitAndInterpolateOnJump(points) {
   if (points.length < 2) return [points];
   let segments = [];
   let currentSegment = [points[0]];
@@ -170,9 +180,16 @@ function splitPolylineOnJump(points) {
     const currLon = normalizeLongitude(curr[1]);
     const lonDiff = Math.abs(currLon - prevLon);
     const dist = haversineDistance(prev[0], prevLon, curr[0], currLon);
-    if (lonDiff > 300 || dist > 2000) {
-      if (currentSegment.length > 1) segments.push(currentSegment);
-      currentSegment = [curr];
+    if (lonDiff > 180 || dist > 2000) {
+      const interp = interpolateDatelineCrossing(prev, curr);
+      if (interp) {
+        currentSegment.push(interp);
+        segments.push(currentSegment);
+        currentSegment = [ [interp[0], interp[1] > 0 ? -180 : 180], curr ];
+      } else {
+        segments.push(currentSegment);
+        currentSegment = [curr];
+      }
     } else {
       currentSegment.push(curr);
     }
@@ -206,7 +223,7 @@ function mostrarOrbita(tle, epoch) {
       }
     }
   }
-  const segments = splitPolylineOnJump(points);
+  const segments = splitAndInterpolateOnJump(points);
   lastOrbitPolyline = L.layerGroup();
   segments.forEach(segment => {
     if (segment.length > 1) {
@@ -216,9 +233,8 @@ function mostrarOrbita(tle, epoch) {
   lastOrbitPolyline.addTo(mapa);
   if (points.length > 0) mapa.fitBounds(L.latLngBounds(points));
 }
-// --------- FIN MEJORA ORBITA ---------
+// --------- FIN INTERPOLACIÓN ---------
 
-// Limpia la órbita al cerrar el popup
 function initMapa() {
   mapa = L.map('map').setView([0, 0], 2);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(mapa);
