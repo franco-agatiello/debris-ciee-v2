@@ -1,5 +1,4 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap');
-
 html, body {
   height: 100%;
   margin: 0;
@@ -10,7 +9,6 @@ html, body {
   color: #23272f;
   box-sizing: border-box;
 }
-
 body > .container-fluid {
   width: 100vw !important;
   max-width: 100vw !important;
@@ -18,7 +16,6 @@ body > .container-fluid {
   padding: 0 !important;
   margin: 0 !important;
 }
-
 .row.flex-nowrap {
   flex-wrap: wrap !important;
   margin: 0 !important;
@@ -27,7 +24,6 @@ body > .container-fluid {
   box-sizing: border-box;
   overflow-x: hidden !important;
 }
-
 #sidebar {
   min-height: 100vh;
   background: #fff;
@@ -39,7 +35,6 @@ body > .container-fluid {
   border-right: 1px solid #dde1e7;
   box-shadow: 2px 0 10px rgba(50,60,90,0.04);
 }
-
 #sidebar h4 {
   font-size: 1.05rem;
   margin-top: 0.5rem;
@@ -48,27 +43,6 @@ body > .container-fluid {
   letter-spacing: 0.5px;
   color: #2c3e50;
 }
-
-#filter-form label {
-  font-size: 0.93rem;
-  font-weight: 500;
-  margin-top: 0.25rem;
-  color: #34495e;
-}
-
-#filter-form .form-select, #filter-form .form-control {
-  font-size: 0.93rem;
-  padding: 0.25rem 0.5rem;
-  border-radius: 0.5rem;
-  margin-bottom: 0.7rem;
-}
-
-.sidebar-logo {
-  max-width: 140px;
-  display: block;
-  margin: 0 auto 0.5rem auto;
-}
-
 main[style] {
   min-height: 100vh;
   padding: 0 !important;
@@ -76,7 +50,6 @@ main[style] {
   max-width: calc(100vw - 210px) !important;
   box-sizing: border-box;
 }
-
 #map {
   width: 100% !important;
   height: 100vh;
@@ -86,25 +59,25 @@ main[style] {
   box-shadow: none !important;
   background: #f7f9fb;
 }
-
-.btn-primary, .btn-secondary {
-  transition: background 0.2s, box-shadow 0.2s;
-  font-weight: 600;
-  border-radius: 0.6rem;
-  font-size: 1rem;
+#footer-ciee {
+  position: absolute;
+  left: 50%;
+  bottom: 12px;
+  transform: translateX(-50%);
+  font-size: 0.78rem;
+  color: #7a869a;
+  z-index: 9999;
+  background: rgba(255,255,255,0.93);
+  padding: 4px 10px 4px 8px;
+  border-radius: 6px;
+  border: 1px solid #e1e5ec;
   box-shadow: 0 2px 8px rgba(44,62,80,0.05);
-  margin-bottom: 0.5rem;
+  text-align: center;
+  margin: 0 auto;
+  width: fit-content;
+  max-width: 98vw;
+  overflow-x: auto;
 }
-.btn-primary.active, .btn-secondary.active {
-  box-shadow: 0 4px 16px rgba(44,62,80,0.10);
-  outline: 2px solid #0056b3;
-}
-
-.btn-primary:focus, .btn-secondary:focus {
-  outline: none;
-  box-shadow: 0 0 0 0.15rem #007bff66;
-}
-
 @media (max-width: 768px) {
   #sidebar {
     width: 100vw !important;
@@ -124,4 +97,23 @@ main[style] {
     min-height: 60vh;
     height: 60vh;
   }
+  #footer-ciee {
+    position: static;
+    display: block;
+    width: 100%;
+    text-align: center;
+    margin: 16px 0 0 0;
+    left: 0;
+    bottom: 0;
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+    transform: none;
+  }
+}
+.leaflet-popup-content img {
+  box-shadow: 0 2px 12px rgba(44,62,80,0.10);
+  border-radius: 8px;
+  margin-top: 4px;
+  max-width: 220px;
 }
