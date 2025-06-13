@@ -1,26 +1,16 @@
 [
   {
-    "nombre": "SAT-X",
-    "pais": "Desconocido",
-    "tamano_caida_kg": 1000,
-    "material_principal": "Aleación",
-    "fecha": "2025-06-12 23:02:00",
+    "nombre": "Objeto 28812",
+    "norad_cat_id": 28812,
+    "tamano_caida_kg": null,
+    "material_principal": null,
+    "pais": null,
+    "fecha": "2025-06-15",
     "inclinacion_orbita": 98.1,
-    "lugar_caida": {"lat": -81.6, "lon": 309.5},
-    "imagen": "",
+    "lugar_caida": {"lat": -81.6, "lon": -50.5},
     "tle": [
       "1 28812U 05031D   25162.96679837  .01575682  19246-2  15042-2 0  9993",
       "2 28812  98.0521  77.4588 0006155 131.8881 358.7889 16.12302553 83405"
     ]
-  },
-  {
-    "nombre": "Ejemplo sin TLE",
-    "pais": "Otro",
-    "tamano_caida_kg": 800,
-    "material_principal": "Titanio",
-    "fecha": "2023-05-10",
-    "inclinacion_orbita": 51.6,
-    "lugar_caida": {"lat": -23.1, "lon": 134.5},
-    "imagen": "img/example.jpg"
   }
 ]
