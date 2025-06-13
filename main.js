@@ -137,18 +137,38 @@ function actualizarMapa() {
   actualizarBotonesModo();
 }
 
-// Dibuja SOLO la última órbita antes de la reentrada (máx. 90 min)
+// --------------------
+// SPLIT POLYLINE ON DATELINE
+// --------------------
+function splitPolylineOnDateline(points) {
+  if (points.length < 2) return [points];
+  let segments = [];
+  let currentSegment = [points[0]];
+
+  for (let i = 1; i < points.length; i++) {
+    const prev = points[i - 1];
+    const curr = points[i];
+    // Si la diferencia de longitud es mayor a 180 grados, corta la línea
+    if (Math.abs(curr[1] - prev[1]) > 180) {
+      segments.push(currentSegment);
+      currentSegment = [prev, curr];
+    } else {
+      currentSegment.push(curr);
+    }
+  }
+  if (currentSegment.length > 1) segments.push(currentSegment);
+  return segments;
+}
+
+// Dibuja SOLO la última órbita antes de la reentrada (máx. 90 min) y evita saltos de antimeridiano
 function mostrarOrbita(tle, epoch) {
   if (lastOrbitPolyline) {
     mapa.removeLayer(lastOrbitPolyline);
     lastOrbitPolyline = null;
   }
   const satrec = satellite.twoline2satrec(tle.line1, tle.line2);
-  // Usar epoch (string UTC) como tiempo final
   const fechaReentrada = epoch ? new Date(epoch) : new Date();
-  // Periodo orbital en minutos
   const minutosPorRev = 1440 / satrec.no;
-  // Solo 1 vuelta antes de la reentrada: máximo 90 minutos
   const tiempoTotal = Math.min(minutosPorRev, 90);
   const points = [];
   for (let t = -tiempoTotal; t <= 0; t += 1) {
@@ -158,16 +178,21 @@ function mostrarOrbita(tle, epoch) {
       const gmst = satellite.gstime(fecha);
       const geo = satellite.eciToGeodetic(posVel.position, gmst);
       const lat = satellite.degreesLat(geo.latitude);
-      const lon = satellite.degreesLong(geo.longitude);
+      let lon = satellite.degreesLong(geo.longitude);
+      // Normalizar longitudes a [-180, 180]
+      if (lon > 180) lon -= 360;
+      if (lon < -180) lon += 360;
       points.push([lat, lon]);
     }
   }
-  if (points.length > 0) {
-    lastOrbitPolyline = L.polyline(points, { color: 'blue', weight: 2, opacity: 0.7 }).addTo(mapa);
-    mapa.fitBounds(lastOrbitPolyline.getBounds());
-  } else {
-    alert('No se pudo calcular la órbita.');
-  }
+  // Rompe la polilínea en el cruce del antimeridiano
+  const segments = splitPolylineOnDateline(points);
+  lastOrbitPolyline = L.layerGroup();
+  segments.forEach(segment => {
+    L.polyline(segment, { color: 'blue', weight: 2, opacity: 0.7 }).addTo(lastOrbitPolyline);
+  });
+  lastOrbitPolyline.addTo(mapa);
+  if (points.length > 0) mapa.fitBounds(L.latLngBounds(points));
 }
 
 // Limpia la órbita al cerrar el popup
