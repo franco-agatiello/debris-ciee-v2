@@ -1,36 +1,26 @@
 [
   {
-    "nombre": "Tiangong-1",
-    "pais": "China",
-    "tamano_caida_kg": 8500,
-    "material_principal": "Aluminio",
-    "fecha": "2018-04-02",
-    "inclinacion_orbita": 42.8,
-    "lugar_caida": {"lat": -13.6, "lon": -164.3},
-    "imagen": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/88/Tiangong-1_Model.jpg/320px-Tiangong-1_Model.jpg",
+    "nombre": "SAT-X",
+    "pais": "Desconocido",
+    "tamano_caida_kg": 1000,
+    "material_principal": "Aleación",
+    "fecha": "2025-06-12 23:02:00",
+    "inclinacion_orbita": 98.1,
+    "lugar_caida": {"lat": -81.6, "lon": 309.5},
+    "imagen": "",
     "tle": [
-      "1 37820U 11053A   18102.55668981  .00000000  00000-0  00000-0 0  9992",
-      "2 37820  42.7790  39.6633 0016413  93.4023 266.9405 15.96607291  3167"
+      "1 28812U 05031D   25162.96679837  .01575682  19246-2  15042-2 0  9993",
+      "2 28812  98.0521  77.4588 0006155 131.8881 358.7889 16.12302553 83405"
     ]
   },
   {
-    "nombre": "Cosmos 954",
-    "pais": "Rusia",
-    "tamano_caida_kg": 900,
+    "nombre": "Ejemplo sin TLE",
+    "pais": "Otro",
+    "tamano_caida_kg": 800,
     "material_principal": "Titanio",
-    "fecha": "1978-01-24",
-    "inclinacion_orbita": 65.0,
-    "lugar_caida": {"lat": 62.0, "lon": -120.0},
-    "imagen": "img/240628-space-debris-2-ew-1216p-753a6f.webp"
-  },
-  {
-    "nombre": "Skylab",
-    "pais": "Estados Unidos",
-    "tamano_caida_kg": 75000,
-    "material_principal": "Aluminio",
-    "fecha": "1979-07-11",
-    "inclinacion_orbita": 50.0,
-    "lugar_caida": {"lat": -31.0, "lon": 122.0},
-    "imagen": "img/Debris_landed_in_Texas.jpg"
+    "fecha": "2023-05-10",
+    "inclinacion_orbita": 51.6,
+    "lugar_caida": {"lat": -23.1, "lon": 134.5},
+    "imagen": "img/example.jpg"
   }
 ]
