@@ -137,21 +137,21 @@ function actualizarMapa() {
   actualizarBotonesModo();
 }
 
-// Dibuja la última órbita usando satellite.js
+// Dibuja SOLO la última órbita antes de la reentrada (máx. 90 min)
 function mostrarOrbita(tle, epoch) {
   if (lastOrbitPolyline) {
     mapa.removeLayer(lastOrbitPolyline);
     lastOrbitPolyline = null;
   }
   const satrec = satellite.twoline2satrec(tle.line1, tle.line2);
-
-  // Usar epoch (string UTC) como centro del paso final
+  // Usar epoch (string UTC) como tiempo final
   const fechaReentrada = epoch ? new Date(epoch) : new Date();
   // Periodo orbital en minutos
   const minutosPorRev = 1440 / satrec.no;
-  // Genera puntos de la última órbita antes de la reentrada
+  // Solo 1 vuelta antes de la reentrada: máximo 90 minutos
+  const tiempoTotal = Math.min(minutosPorRev, 90);
   const points = [];
-  for (let t = -minutosPorRev; t <= 0; t += 1) {
+  for (let t = -tiempoTotal; t <= 0; t += 1) {
     const fecha = new Date(fechaReentrada.getTime() + t * 60 * 1000);
     const posVel = satellite.propagate(satrec, fecha);
     if (posVel.position) {
