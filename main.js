@@ -137,7 +137,7 @@ function actualizarMapa() {
   actualizarBotonesModo();
 }
 
-// --------- FIX DATELINE ---------
+// --------- MEJORADO: Orbita continua y sin saltos ficticios ---------
 function normalizeLongitude(lon) {
   let l = lon;
   while (l < -180) l += 360;
@@ -145,6 +145,7 @@ function normalizeLongitude(lon) {
   return l;
 }
 
+// Solo corta si se cruza de +180 a -180 (o viceversa) y hay cambio de signo
 function splitPolylineOnDateline(points) {
   if (points.length < 2) return [points];
   let segments = [];
@@ -155,7 +156,8 @@ function splitPolylineOnDateline(points) {
     const curr = points[i];
     const prevLon = normalizeLongitude(prev[1]);
     const currLon = normalizeLongitude(curr[1]);
-    if (Math.abs(currLon - prevLon) > 180) {
+    // Solo corta si cruza el borde real del mapa (cambio de signo y distancia > 180)
+    if (Math.abs(currLon - prevLon) > 180 && Math.sign(currLon) !== Math.sign(prevLon)) {
       if (currentSegment.length > 1) segments.push(currentSegment);
       currentSegment = [curr];
     } else {
@@ -175,8 +177,9 @@ function mostrarOrbita(tle, epoch) {
   const fechaReentrada = epoch ? new Date(epoch) : new Date();
   const minutosPorRev = 1440 / satrec.no;
   const tiempoTotal = Math.min(minutosPorRev, 90);
+  const paso = 0.5; // 30 segundos
   const points = [];
-  for (let t = -tiempoTotal; t <= 0; t += 1) {
+  for (let t = -tiempoTotal; t <= 0; t += paso) {
     const fecha = new Date(fechaReentrada.getTime() + t * 60 * 1000);
     const posVel = satellite.propagate(satrec, fecha);
     if (posVel.position) {
@@ -185,7 +188,9 @@ function mostrarOrbita(tle, epoch) {
       const lat = satellite.degreesLat(geo.latitude);
       let lon = satellite.degreesLong(geo.longitude);
       lon = normalizeLongitude(lon);
-      points.push([lat, lon]);
+      if (isFinite(lat) && isFinite(lon)) {
+        points.push([lat, lon]);
+      }
     }
   }
   const segments = splitPolylineOnDateline(points);
@@ -198,7 +203,7 @@ function mostrarOrbita(tle, epoch) {
   lastOrbitPolyline.addTo(mapa);
   if (points.length > 0) mapa.fitBounds(L.latLngBounds(points));
 }
-// --------- END FIX DATELINE ---------
+// --------- FIN MEJORA ORBITA ---------
 
 // Limpia la órbita al cerrar el popup
 function initMapa() {
