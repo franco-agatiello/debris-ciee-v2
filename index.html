@@ -8,7 +8,6 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css"/>
   <link rel="stylesheet" href="style.css"/>
-  <!-- Incluye satellite.js para cálculo de órbitas desde TLE -->
   <script src="https://unpkg.com/satellite.js/dist/satellite.min.js"></script>
 </head>
 <body>
@@ -16,9 +15,6 @@
     <div class="row flex-nowrap">
       <!-- Sidebar de Filtros -->
       <aside class="col-md-2 col-lg-2 p-2 bg-light" id="sidebar">
-        <a href="https://www.ciee.unlp.edu.ar/" target="_blank" rel="noopener">
-          <img src="Captura de pantalla 2025-06-06 211123.png" alt="Logo Derbis" class="sidebar-logo mb-3">
-        </a>
         <h4>Filtros</h4>
         <form id="filter-form">
           <label for="pais">País de origen:</label>
@@ -60,12 +56,6 @@
         <div id="map"></div>
       </main>
     </div>
-    <footer id="footer-ciee" class="d-none d-md-block">
-      <span>
-        © Copyright CIEE 2025 - All rights reserved.
-        <a href="https://www.ciee.unlp.edu.ar/" target="_blank" rel="noopener">CIEE</a>
-      </span>
-    </footer>
   </div>
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
