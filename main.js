@@ -3,6 +3,61 @@ let mapa, capaPuntos, capaCalor, modo = "puntos";
 let leyendaPuntos, leyendaCalor;
 let currentOrbitLine = null;
 
+// Normaliza longitud a [-180,180]
+function normalizeLongitude(lon) {
+  lon = Number(lon);
+  while (lon > 180) lon -= 360;
+  while (lon < -180) lon += 360;
+  return lon;
+}
+
+// Segmenta una polilínea para evitar el cruce del antimeridiano
+function segmentarPolilineaAntimeridiano(points) {
+  if (points.length < 2) return [points];
+  const segments = [];
+  let current = [points[0]];
+  for (let i = 1; i < points.length; i++) {
+    const prev = points[i - 1];
+    const curr = points[i];
+    const dLon = Math.abs(curr[1] - prev[1]);
+    if (dLon > 180) {
+      segments.push(current);
+      current = [curr];
+    } else {
+      current.push(curr);
+    }
+  }
+  if (current.length > 1) segments.push(current);
+  return segments;
+}
+
+// Dada la data del debris, calcula la última órbita si hay TLE
+function calcularUltimaOrbitaDesdeTLE(debris) {
+  if (!debris.tle || debris.tle.length < 2 || !debris.fecha || !debris.lugar_caida) return null;
+  const satrec = satellite.twoline2satrec(debris.tle[0], debris.tle[1]);
+  const epoch = new Date(debris.fecha.replace(' ', 'T') + 'Z');
+  const minutosOrbita = 90;
+  const pasos = 60;
+  let points = [];
+  for (let i = minutosOrbita; i > 0; i -= minutosOrbita/pasos) {
+    const t = new Date(epoch.getTime() - i * 60 * 1000);
+    const gmst = satellite.gstime(t);
+    const pos = satellite.propagate(satrec, t);
+    if (pos.position) {
+      const geo = satellite.eciToGeodetic(pos.position, gmst);
+      const lat = satellite.degreesLat(geo.latitude);
+      let lon = normalizeLongitude(satellite.degreesLong(geo.longitude));
+      points.push([lat, lon]);
+    }
+  }
+  // Añade el punto de caída exacto
+  points.push([
+    Number(debris.lugar_caida.lat),
+    normalizeLongitude(debris.lugar_caida.lon)
+  ]);
+  return segmentarPolilineaAntimeridiano(points);
+}
+
 const iconoAmarillo = L.icon({
   iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-yellow.png',
   iconSize: [18, 29],
@@ -25,6 +80,14 @@ const iconoRojo = L.icon({
 async function cargarDatos() {
   const resp = await fetch('data/debris.json');
   debris = await resp.json();
+
+  // Calcula y guarda la órbita final para cada debris con TLE
+  debris.forEach(d => {
+    if (d.tle && d.fecha && d.lugar_caida) {
+      d.orbita_final = calcularUltimaOrbitaDesdeTLE(d);
+    }
+  });
+
   poblarFiltros();
   actualizarMapa();
 }
@@ -109,10 +172,10 @@ function actualizarMapa() {
         Fecha: ${d.fecha}<br>
         ${d.imagen ? `<img src="${d.imagen}" alt="${d.nombre}"><br>` : ''}
       `;
-      if (d.tle && d.tle.length === 2) {
+      if (d.orbita_final && d.orbita_final.length > 0) {
         popupContenido += `<button class="btn btn-sm btn-outline-warning mt-2" onclick="mostrarOrbitasTLE(${idx})">Ver última órbita (TLE)</button>`;
       }
-      const marker = L.marker([d.lugar_caida.lat, d.lugar_caida.lon], {icon: marcadorPorFecha(d.fecha)})
+      const marker = L.marker([d.lugar_caida.lat, normalizeLongitude(d.lugar_caida.lon)], {icon: marcadorPorFecha(d.fecha)})
         .bindPopup(popupContenido, {autoPan: true});
 
       marker.on('popupopen', function(e) {
@@ -135,7 +198,7 @@ function actualizarMapa() {
     capaPuntos.addTo(mapa);
     mostrarLeyendaPuntos();
   } else {
-    const heatData = datosFiltrados.map(d => [d.lugar_caida.lat, d.lugar_caida.lon]);
+    const heatData = datosFiltrados.map(d => [d.lugar_caida.lat, normalizeLongitude(d.lugar_caida.lon)]);
     if (heatData.length) {
       capaCalor = L.heatLayer(heatData, {
         radius: 30,
@@ -155,27 +218,6 @@ function actualizarMapa() {
   actualizarBotonesModo();
 }
 
-// --- FIX para evitar el trazo cruzando el antimeridiano ---
-function segmentarPolilineaAntimeridiano(points) {
-  if (points.length < 2) return [points];
-  const segments = [];
-  let current = [points[0]];
-  for (let i = 1; i < points.length; i++) {
-    const prev = points[i - 1];
-    const curr = points[i];
-    const dLon = Math.abs(curr[1] - prev[1]);
-    if (dLon > 180) {
-      // Corta el segmento aquí
-      segments.push(current);
-      current = [curr];
-    } else {
-      current.push(curr);
-    }
-  }
-  if (current.length > 1) segments.push(current);
-  return segments;
-}
-
 // Dibuja la órbita calculada a partir del TLE y soluciona el cruce del antimeridiano
 window.mostrarOrbitasTLE = function(idx) {
   if (currentOrbitLine) {
@@ -183,44 +225,16 @@ window.mostrarOrbitasTLE = function(idx) {
     currentOrbitLine = null;
   }
   const d = filtrarDatos()[idx];
-  if (d.tle && d.tle.length === 2) {
-    // Calcula trayectoria
-    const points = calcularTrayectoriaDesdeTLE(d.tle, d.fecha, d.lugar_caida);
-    const segments = segmentarPolilineaAntimeridiano(points);
+  if (d.orbita_final && d.orbita_final.length > 0) {
     currentOrbitLine = L.layerGroup();
-    segments.forEach(seg => {
-      L.polyline(seg, {color: 'orange', weight: 3, opacity: 0.8}).addTo(currentOrbitLine);
-    });
+    d.orbita_final.forEach(seg =>
+      L.polyline(seg, {color: 'orange', weight: 3, opacity: 0.8}).addTo(currentOrbitLine)
+    );
     currentOrbitLine.addTo(mapa);
-    if (points.length > 1) mapa.fitBounds(L.polyline(points).getBounds(), {maxZoom: 4});
+    if (d.orbita_final.flat().length > 1)
+      mapa.fitBounds(L.polyline(d.orbita_final.flat()).getBounds(), {maxZoom: 4});
   }
 };
-
-// Calcula la trayectoria de la última órbita antes de la reentrada y fuerza el último punto a ser el lugar de caída
-function calcularTrayectoriaDesdeTLE(tleArr, fechaReentrada, lugarCaida) {
-  const satrec = satellite.twoline2satrec(tleArr[0], tleArr[1]);
-  const epoch = new Date(fechaReentrada + 'T00:00:00Z');
-  const minutosOrbita = 90;
-  const pasos = 60;
-  let points = [];
-  for (let i = minutosOrbita; i > 0; i -= minutosOrbita/pasos) {
-    const t = new Date(epoch.getTime() - i*60*1000);
-    const gmst = satellite.gstime(t);
-    const pos = satellite.propagate(satrec, t);
-    if (pos.position) {
-      const geo = satellite.eciToGeodetic(pos.position, gmst);
-      const lat = satellite.degreesLat(geo.latitude);
-      let lon = satellite.degreesLong(geo.longitude);
-      // Ajuste para mantener longitudes en el rango [-180, 180]
-      if (lon < -180) lon += 360;
-      if (lon > 180) lon -= 360;
-      points.push([lat, lon]);
-    }
-  }
-  // Fuerza el último punto a ser exactamente el lugar de caída (aunque la simulación no llegue justo ahí)
-  points.push([lugarCaida.lat, lugarCaida.lon]);
-  return points;
-}
 
 function mostrarLeyendaPuntos() {
   leyendaPuntos = L.control({position: 'bottomright'});
