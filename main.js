@@ -232,21 +232,37 @@ function mostrarOrbitaEnModal(tle, nombre, lugar_caida = null) {
   modal.show();
 }
 
-// Unwrap de longitudes para continuidad de órbita
-function unwrapLongitudes(points) {
-  if (points.length === 0) return points;
+// Unwrap y CLIP de longitudes: solo muestra la órbita en el planisferio central
+function unwrapLongitudesAndClip(points) {
+  if (points.length === 0) return [];
   let prevLon = points[0][1];
-  const result = [[points[0][0], prevLon]];
+  const result = [];
   let offset = 0;
+  let currentSegment = [[points[0][0], prevLon]];
+
   for (let i = 1; i < points.length; i++) {
     let lon = points[i][1];
     let diff = lon + offset - prevLon;
     if (diff > 180) offset -= 360;
     else if (diff < -180) offset += 360;
     lon += offset;
-    result.push([points[i][0], lon]);
+
+    // Si la longitud desenrollada se sale de [-180, 180], corta el segmento
+    if (lon < -180 || lon > 180) {
+      // Si el segmento tiene más de un punto, guárdalo
+      if (currentSegment.length > 1) result.push(currentSegment);
+      // Empieza nuevo segmento (solo si el punto vuelve a estar dentro de rango)
+      if (lon >= -180 && lon <= 180)
+        currentSegment = [[points[i][0], lon]];
+      else
+        currentSegment = [];
+    } else {
+      currentSegment.push([points[i][0], lon]);
+    }
     prevLon = lon;
   }
+  // Agrega el último segmento si corresponde
+  if (currentSegment.length > 1) result.push(currentSegment);
   return result;
 }
 
@@ -266,22 +282,20 @@ function calcularYMostrarOrbita(tle, leafletMap, lugar_caida = null) {
     if (isFinite(lat) && isFinite(lon)) points.push([lat, lon]);
   }
 
-  // Aplica el "unwrap" de longitudes
-  const unwrappedPoints = unwrapLongitudes(points);
+  // Aplica el "unwrap" y clip de longitudes solo al planisferio central
+  const clippedSegments = unwrapLongitudesAndClip(points);
 
   if (orbitaLayer) {
     leafletMap.removeLayer(orbitaLayer);
     orbitaLayer = null;
   }
-  if (unwrappedPoints.length > 1) {
-    orbitaLayer = L.polyline(unwrappedPoints, {color: 'orange', weight: 3}).addTo(leafletMap);
-    leafletMap.fitBounds(unwrappedPoints, {padding: [30,30]});
-  } else if (unwrappedPoints.length === 1) {
-    orbitaLayer = L.marker(unwrappedPoints[0], {color: 'orange'}).addTo(leafletMap);
-    leafletMap.setView(unwrappedPoints[0], 4);
-  } else {
-    orbitaLayer = null;
-    alert("No se pudo calcular la órbita para este TLE.");
+  if (clippedSegments.length > 0) {
+    orbitaLayer = L.layerGroup();
+    clippedSegments.forEach(seg => {
+      L.polyline(seg, {color: 'orange', weight: 3}).addTo(orbitaLayer);
+    });
+    orbitaLayer.addTo(leafletMap);
+    leafletMap.fitBounds(clippedSegments[0], {padding: [30,30]});
   }
 
   // MARCA DE REENTRADA
