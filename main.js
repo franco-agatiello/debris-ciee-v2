@@ -228,12 +228,30 @@ function mostrarOrbitaEnModal(tle, nombre) {
   modal.show();
 }
 
-// Corte robusto de línea por antimeridiano
+// Unwrap de longitudes para continuidad de órbita
+function unwrapLongitudes(points) {
+  if (points.length === 0) return points;
+  let prevLon = points[0][1];
+  const result = [[points[0][0], prevLon]];
+  let offset = 0;
+  for (let i = 1; i < points.length; i++) {
+    let lon = points[i][1];
+    let diff = lon + offset - prevLon;
+    if (diff > 180) offset -= 360;
+    else if (diff < -180) offset += 360;
+    lon += offset;
+    result.push([points[i][0], lon]);
+    prevLon = lon;
+  }
+  return result;
+}
+
 function calcularYMostrarOrbita(tle, leafletMap) {
   const satrec = satellite.twoline2satrec(tle[0], tle[1]);
   const now = new Date();
+  const period_mins = 90 * 3; // 3 vueltas para mayor continuidad
   const points = [];
-  for (let i = 0; i <= 90; i += 1) {
+  for (let i = 0; i <= period_mins; i += 1) {
     const time = new Date(now.getTime() + i * 60 * 1000);
     const posVel = satellite.propagate(satrec, time);
     if (!posVel || !posVel.position) continue;
@@ -244,44 +262,19 @@ function calcularYMostrarOrbita(tle, leafletMap) {
     if (isFinite(lat) && isFinite(lon)) points.push([lat, lon]);
   }
 
-  // --- CORTE DE LÍNEA ROBUSTO ---
-  const lines = [];
-  let currentLine = [];
-  for (let i = 0; i < points.length; i++) {
-    if (currentLine.length > 0) {
-      const prevLon = currentLine[currentLine.length - 1][1];
-      const currLon = points[i][1];
-      // Si la diferencia absoluta de longitudes es mayor a 180°, corta la línea
-      if (Math.abs(currLon - prevLon) > 180) {
-        lines.push(currentLine);
-        currentLine = [];
-      }
-    }
-    currentLine.push(points[i]);
-  }
-  if (currentLine.length > 0) lines.push(currentLine);
+  // Aplica el "unwrap" de longitudes
+  const unwrappedPoints = unwrapLongitudes(points);
 
   if (orbitaLayer) {
     leafletMap.removeLayer(orbitaLayer);
     orbitaLayer = null;
   }
-  if (lines.length > 0 && lines.some(line => line.length > 1)) {
-    orbitaLayer = L.layerGroup();
-    lines.forEach(line => {
-      if (line.length > 1) {
-        // Normaliza longitudes
-        const normLine = line.map(([lat, lon]) => [lat, ((lon + 540) % 360) - 180]);
-        L.polyline(normLine, {color: 'orange', weight: 3}).addTo(orbitaLayer);
-      }
-    });
-    orbitaLayer.addTo(leafletMap);
-    const firstLine = lines.find(line => line.length > 1);
-    if (firstLine) {
-      leafletMap.fitBounds(firstLine, {padding: [30,30]});
-    }
-  } else if (points.length === 1) {
-    orbitaLayer = L.marker(points[0], {color: 'orange'}).addTo(leafletMap);
-    leafletMap.setView(points[0], 4);
+  if (unwrappedPoints.length > 1) {
+    orbitaLayer = L.polyline(unwrappedPoints, {color: 'orange', weight: 3}).addTo(leafletMap);
+    leafletMap.fitBounds(unwrappedPoints, {padding: [30,30]});
+  } else if (unwrappedPoints.length === 1) {
+    orbitaLayer = L.marker(unwrappedPoints[0], {color: 'orange'}).addTo(leafletMap);
+    leafletMap.setView(unwrappedPoints[0], 4);
   } else {
     orbitaLayer = null;
     alert("No se pudo calcular la órbita para este TLE.");
