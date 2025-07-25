@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Panel de Control | Desechos Espaciales</title>
+  <title>Dashboard | Debris Espaciales</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5/dist/css/bootstrap.min.css"/>
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css"/>
@@ -12,10 +12,10 @@
 <body>
   <div class="container-fluid">
     <div class="row flex-nowrap">
-      <!-- Barra lateral de filtros -->
+      <!-- Sidebar de Filtros -->
       <aside class="col-md-2 col-lg-2 p-2 bg-light" id="sidebar">
         <a href="https://www.ciee.unlp.edu.ar/" target="_blank" rel="noopener">
-          <img src="Captura de pantalla 2025-06-06 211123.png" alt="Logotipo de Derbis" class="sidebar-logo mb-3">
+          <img src="Captura de pantalla 2025-06-06 211123.png" alt="Logo Derbis" class="sidebar-logo mb-3">
         </a>
         <h4>Filtros</h4>
         <form id="filter-form">
@@ -34,7 +34,7 @@
           <input type="date" class="form-control mb-2" id="fecha-desde"/>
           <label for="fecha-hasta">Fecha hasta:</label>
           <input type="date" class="form-control mb-2" id="fecha-hasta"/>
-          <label for="inclinacion-min">Inclinación orbital (°):</label>
+          <label for="inclinacion-min">Inclinación órbita (°):</label>
           <div class="row g-1 mb-2">
             <div class="col">
               <input type="number" class="form-control" id="inclinacion-min" placeholder="Mín" min="0" max="180">
@@ -59,12 +59,30 @@
       </main>
     </div>
     <footer id="footer-ciee" class="d-none d-md-block">
-      <span>© Copyright CIEE 2025 - Todos los derechos reservados. <a href="https://www.ciee.unlp.edu.ar/" target="_blank" rel="noopener">CIEE</a></span>
+      <span>
+        © Copyright CIEE 2025 - All rights reserved.
+        <a href="https://www.ciee.unlp.edu.ar/" target="_blank" rel="noopener">CIEE</a>
+      </span>
     </footer>
+  </div>
+  <!-- Modal para órbita -->
+  <div class="modal fade" id="orbitaModal" tabindex="-1" aria-labelledby="orbitaModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="orbitaModalLabel">Órbita del satélite</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-body">
+          <div id="orbita-map" style="height: 400px; width: 100%;"></div>
+        </div>
+      </div>
+    </div>
   </div>
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
-  <script src="https://unpkg.com/satellite.js@5.0.0/dist/satellite.min.js"></script>
+  <script src="https://unpkg.com/satellite.js/dist/satellite.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5/dist/js/bootstrap.bundle.min.js"></script>
   <script src="main.js"></script>
 </body>
 </html>
