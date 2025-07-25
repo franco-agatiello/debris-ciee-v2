@@ -191,12 +191,11 @@ function mostrarLeyendaCalor() {
 }
 
 function initMapa() {
-  mapa = L.map('map', { maxZoom: 20 }).setView([0, 0], 2);
-  // Mapa base IGN Argentina, con maxZoom ampliado
-  L.tileLayer('https://wms.ign.gob.ar/geoserver/gwc/service/tms/1.0.0/capabaseargenmap@EPSG%3A3857@png/{z}/{x}/{-y}.png', {
-    attribution: '<a href="http://leafletjs.com" title="A JS library for interactive maps">Leaflet</a> | <a href="http://www.ign.gob.ar/AreaServicios/Argenmap/IntroduccionV2" target="_blank">Instituto Geográfico Nacional</a> + <a href="http://www.osm.org/copyright" target="_blank">OpenStreetMap</a>',
-    minZoom: 3,
-    maxZoom: 20 // ¡Ahora permite acercar más!
+  mapa = L.map('map', { maxZoom: 19 }).setView([0, 0], 2);
+  // CartoDB Positron: liviano, con demarcaciones, nombres en español/local
+  L.tileLayer('https://cartodb-basemaps-{s}.global.ssl.fastly.net/light_all/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap contributors © CARTO',
+    maxZoom: 19
   }).addTo(mapa);
 }
 
@@ -214,18 +213,17 @@ function listeners() {
   });
 }
 
-// Modal y Leaflet para órbita, con restricción a un solo mapa y marcador de reentrada en IGN
+// Modal y Leaflet para órbita
 function mostrarOrbitaEnModal(tle, nombre, lugar_caida = null) {
   const modal = new bootstrap.Modal(document.getElementById('orbitaModal'));
   document.getElementById('orbitaModalLabel').textContent = `Órbita de ${nombre}`;
   setTimeout(() => {
     if (!orbitaMap) {
-      orbitaMap = L.map('orbita-map', { zoomControl: true, maxZoom: 20 }).setView([0,0], 2);
-      // Mapa base IGN Argentina también en el modal, con maxZoom ampliado
-      L.tileLayer('https://wms.ign.gob.ar/geoserver/gwc/service/tms/1.0.0/capabaseargenmap@EPSG%3A3857@png/{z}/{x}/{-y}.png', {
-        attribution: '<a href="http://leafletjs.com" title="A JS library for interactive maps">Leaflet</a> | <a href="http://www.ign.gob.ar/AreaServicios/Argenmap/IntroduccionV2" target="_blank">Instituto Geográfico Nacional</a> + <a href="http://www.osm.org/copyright" target="_blank">OpenStreetMap</a>',
-        minZoom: 3,
-        maxZoom: 20
+      orbitaMap = L.map('orbita-map', { zoomControl: true, maxZoom: 19 }).setView([0,0], 2);
+      // CartoDB Positron también en modal
+      L.tileLayer('https://cartodb-basemaps-{s}.global.ssl.fastly.net/light_all/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors © CARTO',
+        maxZoom: 19
       }).addTo(orbitaMap);
     }
     if (orbitaLayer) {
