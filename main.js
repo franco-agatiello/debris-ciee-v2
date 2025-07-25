@@ -191,12 +191,12 @@ function mostrarLeyendaCalor() {
 }
 
 function initMapa() {
-  mapa = L.map('map').setView([0, 0], 2);
-  // Mapa base IGN Argentina
+  mapa = L.map('map', { maxZoom: 20 }).setView([0, 0], 2);
+  // Mapa base IGN Argentina, con maxZoom ampliado
   L.tileLayer('https://wms.ign.gob.ar/geoserver/gwc/service/tms/1.0.0/capabaseargenmap@EPSG%3A3857@png/{z}/{x}/{-y}.png', {
     attribution: '<a href="http://leafletjs.com" title="A JS library for interactive maps">Leaflet</a> | <a href="http://www.ign.gob.ar/AreaServicios/Argenmap/IntroduccionV2" target="_blank">Instituto Geográfico Nacional</a> + <a href="http://www.osm.org/copyright" target="_blank">OpenStreetMap</a>',
     minZoom: 3,
-    maxZoom: 18
+    maxZoom: 20 // ¡Ahora permite acercar más!
   }).addTo(mapa);
 }
 
@@ -220,12 +220,12 @@ function mostrarOrbitaEnModal(tle, nombre, lugar_caida = null) {
   document.getElementById('orbitaModalLabel').textContent = `Órbita de ${nombre}`;
   setTimeout(() => {
     if (!orbitaMap) {
-      orbitaMap = L.map('orbita-map', { zoomControl: true }).setView([0,0], 2);
-      // Mapa base IGN Argentina también en el modal
+      orbitaMap = L.map('orbita-map', { zoomControl: true, maxZoom: 20 }).setView([0,0], 2);
+      // Mapa base IGN Argentina también en el modal, con maxZoom ampliado
       L.tileLayer('https://wms.ign.gob.ar/geoserver/gwc/service/tms/1.0.0/capabaseargenmap@EPSG%3A3857@png/{z}/{x}/{-y}.png', {
         attribution: '<a href="http://leafletjs.com" title="A JS library for interactive maps">Leaflet</a> | <a href="http://www.ign.gob.ar/AreaServicios/Argenmap/IntroduccionV2" target="_blank">Instituto Geográfico Nacional</a> + <a href="http://www.osm.org/copyright" target="_blank">OpenStreetMap</a>',
         minZoom: 3,
-        maxZoom: 18
+        maxZoom: 20
       }).addTo(orbitaMap);
     }
     if (orbitaLayer) {
