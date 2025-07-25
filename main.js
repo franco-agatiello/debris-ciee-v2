@@ -228,29 +228,56 @@ function mostrarOrbitaEnModal(tle, nombre) {
   modal.show();
 }
 
+// Corte robusto de línea por antimeridiano
 function calcularYMostrarOrbita(tle, leafletMap) {
   const satrec = satellite.twoline2satrec(tle[0], tle[1]);
   const now = new Date();
   const points = [];
-  for (let i = 0; i <= 90; i += 1) { // cada minuto
+  for (let i = 0; i <= 90; i += 1) {
     const time = new Date(now.getTime() + i * 60 * 1000);
     const posVel = satellite.propagate(satrec, time);
-    if (!posVel || !posVel.position) continue; // <-- Robustez aquí
-    const positionEci = posVel.position;
+    if (!posVel || !posVel.position) continue;
     const gmst = satellite.gstime(time);
-    const positionGd = satellite.eciToGeodetic(positionEci, gmst);
+    const positionGd = satellite.eciToGeodetic(posVel.position, gmst);
     const lat = satellite.degreesLat(positionGd.latitude);
-    const lon = satellite.degreesLong(positionGd.longitude);
+    let lon = satellite.degreesLong(positionGd.longitude);
     if (isFinite(lat) && isFinite(lon)) points.push([lat, lon]);
   }
+
+  // --- CORTE DE LÍNEA ROBUSTO ---
+  const lines = [];
+  let currentLine = [];
+  for (let i = 0; i < points.length; i++) {
+    if (currentLine.length > 0) {
+      const prevLon = currentLine[currentLine.length - 1][1];
+      const currLon = points[i][1];
+      // Si la diferencia absoluta de longitudes es mayor a 180°, corta la línea
+      if (Math.abs(currLon - prevLon) > 180) {
+        lines.push(currentLine);
+        currentLine = [];
+      }
+    }
+    currentLine.push(points[i]);
+  }
+  if (currentLine.length > 0) lines.push(currentLine);
+
   if (orbitaLayer) {
     leafletMap.removeLayer(orbitaLayer);
     orbitaLayer = null;
   }
-  if (points.length > 1) {
-    orbitaLayer = L.polyline(points, {color: 'orange', weight: 3}).addTo(leafletMap);
-    if (typeof orbitaLayer.getBounds === "function") {
-      leafletMap.fitBounds(orbitaLayer.getBounds(), {padding: [30,30]});
+  if (lines.length > 0 && lines.some(line => line.length > 1)) {
+    orbitaLayer = L.layerGroup();
+    lines.forEach(line => {
+      if (line.length > 1) {
+        // Normaliza longitudes
+        const normLine = line.map(([lat, lon]) => [lat, ((lon + 540) % 360) - 180]);
+        L.polyline(normLine, {color: 'orange', weight: 3}).addTo(orbitaLayer);
+      }
+    });
+    orbitaLayer.addTo(leafletMap);
+    const firstLine = lines.find(line => line.length > 1);
+    if (firstLine) {
+      leafletMap.fitBounds(firstLine, {padding: [30,30]});
     }
   } else if (points.length === 1) {
     orbitaLayer = L.marker(points[0], {color: 'orange'}).addTo(leafletMap);
