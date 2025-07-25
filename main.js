@@ -115,7 +115,6 @@ function actualizarMapa() {
       const marker = L.marker([d.lugar_caida.lat, d.lugar_caida.lon], {icon: marcadorPorFecha(d.fecha)})
         .bindPopup(popupContenido, {autoPan: true});
 
-      // Ajustar el popup cuando la imagen termine de cargar
       marker.on('popupopen', function(e) {
         const imgs = e.popup._contentNode.querySelectorAll('img');
         imgs.forEach(function(img) {
@@ -150,7 +149,6 @@ function actualizarMapa() {
   actualizarBotonesModo();
 }
 
-// Manejo del botón "Ver última órbita"
 document.addEventListener('click', function(e) {
   if (e.target.classList.contains('ver-orbita')) {
     const nombre = decodeURIComponent(e.target.getAttribute('data-nombre'));
@@ -190,11 +188,11 @@ function mostrarLeyendaCalor() {
   leyendaCalor.addTo(mapa);
 }
 
+// *** MAPTILER EN ESPAÑOL (requiere tu API KEY gratuita de maptiler.com) ***
 function initMapa() {
   mapa = L.map('map', { maxZoom: 19 }).setView([0, 0], 2);
-  // CartoDB Positron: liviano, con demarcaciones, nombres en español/local
-  L.tileLayer('https://cartodb-basemaps-{s}.global.ssl.fastly.net/light_all/{z}/{x}/{y}.png', {
-    attribution: '© OpenStreetMap contributors © CARTO',
+  L.tileLayer('https://api.maptiler.com/maps/streets/{z}/{x}/{y}.png?key=TU_API_KEY&language=es', {
+    attribution: '&copy; MapTiler &copy; OpenStreetMap contributors',
     maxZoom: 19
   }).addTo(mapa);
 }
@@ -213,16 +211,15 @@ function listeners() {
   });
 }
 
-// Modal y Leaflet para órbita
+// Modal y Leaflet para órbita con MapTiler (español)
 function mostrarOrbitaEnModal(tle, nombre, lugar_caida = null) {
   const modal = new bootstrap.Modal(document.getElementById('orbitaModal'));
   document.getElementById('orbitaModalLabel').textContent = `Órbita de ${nombre}`;
   setTimeout(() => {
     if (!orbitaMap) {
       orbitaMap = L.map('orbita-map', { zoomControl: true, maxZoom: 19 }).setView([0,0], 2);
-      // CartoDB Positron también en modal
-      L.tileLayer('https://cartodb-basemaps-{s}.global.ssl.fastly.net/light_all/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap contributors © CARTO',
+      L.tileLayer('https://api.maptiler.com/maps/streets/{z}/{x}/{y}.png?key=TU_API_KEY&language=es', {
+        attribution: '&copy; MapTiler &copy; OpenStreetMap contributors',
         maxZoom: 19
       }).addTo(orbitaMap);
     }
@@ -240,26 +237,20 @@ function mostrarOrbitaEnModal(tle, nombre, lugar_caida = null) {
   modal.show();
 }
 
-// Unwrap y CLIP de longitudes: solo muestra la órbita en el planisferio central
 function unwrapLongitudesAndClip(points) {
   if (points.length === 0) return [];
   let prevLon = points[0][1];
   const result = [];
   let offset = 0;
   let currentSegment = [[points[0][0], prevLon]];
-
   for (let i = 1; i < points.length; i++) {
     let lon = points[i][1];
     let diff = lon + offset - prevLon;
     if (diff > 180) offset -= 360;
     else if (diff < -180) offset += 360;
     lon += offset;
-
-    // Si la longitud desenrollada se sale de [-180, 180], corta el segmento
     if (lon < -180 || lon > 180) {
-      // Si el segmento tiene más de un punto, guárdalo
       if (currentSegment.length > 1) result.push(currentSegment);
-      // Empieza nuevo segmento (solo si el punto vuelve a estar dentro de rango)
       if (lon >= -180 && lon <= 180)
         currentSegment = [[points[i][0], lon]];
       else
@@ -269,7 +260,6 @@ function unwrapLongitudesAndClip(points) {
     }
     prevLon = lon;
   }
-  // Agrega el último segmento si corresponde
   if (currentSegment.length > 1) result.push(currentSegment);
   return result;
 }
@@ -277,7 +267,7 @@ function unwrapLongitudesAndClip(points) {
 function calcularYMostrarOrbita(tle, leafletMap, lugar_caida = null) {
   const satrec = satellite.twoline2satrec(tle[0], tle[1]);
   const now = new Date();
-  const period_mins = 90 * 3; // 3 vueltas para mayor continuidad
+  const period_mins = 90 * 3;
   const points = [];
   for (let i = 0; i <= period_mins; i += 1) {
     const time = new Date(now.getTime() + i * 60 * 1000);
@@ -289,10 +279,7 @@ function calcularYMostrarOrbita(tle, leafletMap, lugar_caida = null) {
     let lon = satellite.degreesLong(positionGd.longitude);
     if (isFinite(lat) && isFinite(lon)) points.push([lat, lon]);
   }
-
-  // Aplica el "unwrap" y clip de longitudes solo al planisferio central
   const clippedSegments = unwrapLongitudesAndClip(points);
-
   if (orbitaLayer) {
     leafletMap.removeLayer(orbitaLayer);
     orbitaLayer = null;
@@ -305,8 +292,6 @@ function calcularYMostrarOrbita(tle, leafletMap, lugar_caida = null) {
     orbitaLayer.addTo(leafletMap);
     leafletMap.fitBounds(clippedSegments[0], {padding: [30,30]});
   }
-
-  // MARCA DE REENTRADA
   if (lugar_caida && isFinite(lugar_caida.lat) && isFinite(lugar_caida.lon)) {
     reentryMarker = L.marker([lugar_caida.lat, lugar_caida.lon], {
       icon: L.icon({
