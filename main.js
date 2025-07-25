@@ -3,6 +3,7 @@ let mapa, capaPuntos, capaCalor, modo = "puntos";
 let leyendaPuntos, leyendaCalor;
 let orbitaMap = null;
 let orbitaLayer = null;
+let reentryMarker = null; // Para marcar la posición de reentrada en el mapa de órbita
 
 const iconoAmarillo = L.icon({
   iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-yellow.png',
@@ -155,7 +156,7 @@ document.addEventListener('click', function(e) {
     const nombre = decodeURIComponent(e.target.getAttribute('data-nombre'));
     const sat = debris.find(x => x.nombre === nombre);
     if (sat && sat.tle && sat.tle.length === 2) {
-      mostrarOrbitaEnModal(sat.tle, sat.nombre);
+      mostrarOrbitaEnModal(sat.tle, sat.nombre, sat.lugar_caida);
     }
   }
 });
@@ -208,21 +209,24 @@ function listeners() {
   });
 }
 
-// Modal y Leaflet para órbita
-function mostrarOrbitaEnModal(tle, nombre) {
-  // Inicializa el modal
+// Modal y Leaflet para órbita, con restricción a un solo mapa y marcador de reentrada
+function mostrarOrbitaEnModal(tle, nombre, lugar_caida = null) {
   const modal = new bootstrap.Modal(document.getElementById('orbitaModal'));
   document.getElementById('orbitaModalLabel').textContent = `Órbita de ${nombre}`;
   setTimeout(() => {
     if (!orbitaMap) {
-      orbitaMap = L.map('orbita-map').setView([0,0], 2);
+      orbitaMap = L.map('orbita-map', { zoomControl: true }).setView([0,0], 2);
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(orbitaMap);
     }
     if (orbitaLayer) {
       orbitaMap.removeLayer(orbitaLayer);
       orbitaLayer = null;
     }
-    calcularYMostrarOrbita(tle, orbitaMap);
+    if (reentryMarker) {
+      orbitaMap.removeLayer(reentryMarker);
+      reentryMarker = null;
+    }
+    calcularYMostrarOrbita(tle, orbitaMap, lugar_caida);
     orbitaMap.invalidateSize();
   }, 400);
   modal.show();
@@ -246,7 +250,7 @@ function unwrapLongitudes(points) {
   return result;
 }
 
-function calcularYMostrarOrbita(tle, leafletMap) {
+function calcularYMostrarOrbita(tle, leafletMap, lugar_caida = null) {
   const satrec = satellite.twoline2satrec(tle[0], tle[1]);
   const now = new Date();
   const period_mins = 90 * 3; // 3 vueltas para mayor continuidad
@@ -278,6 +282,19 @@ function calcularYMostrarOrbita(tle, leafletMap) {
   } else {
     orbitaLayer = null;
     alert("No se pudo calcular la órbita para este TLE.");
+  }
+
+  // MARCA DE REENTRADA
+  if (lugar_caida && isFinite(lugar_caida.lat) && isFinite(lugar_caida.lon)) {
+    reentryMarker = L.marker([lugar_caida.lat, lugar_caida.lon], {
+      icon: L.icon({
+        iconUrl: 'https://cdn-icons-png.flaticon.com/512/684/684908.png',
+        iconSize: [32, 32],
+        iconAnchor: [16, 32],
+        popupAnchor: [0, -32]
+      })
+    }).addTo(leafletMap);
+    reentryMarker.bindPopup('Posición de reentrada').openPopup();
   }
 }
 
