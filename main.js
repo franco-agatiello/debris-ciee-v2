@@ -188,12 +188,14 @@ function mostrarLeyendaCalor() {
   leyendaCalor.addTo(mapa);
 }
 
-// *** MAPTILER EN ESPAÑOL (requiere tu API KEY gratuita de maptiler.com) ***
+// Cambiado: MAPTILER VECTOR TILE (tu propio estilo)
 function initMapa() {
   mapa = L.map('map', { maxZoom: 19 }).setView([0, 0], 2);
-  L.tileLayer('https://api.maptiler.com/maps/streets/{z}/{x}/{y}.png?key=TU_API_KEY&language=es', {
+  L.tileLayer('https://api.maptiler.com/tiles/019842c3-c233-72bc-87bb-6a932bad4058/{z}/{x}/{y}.png?key=Qz3BoFqkGmS3yT8lCQhS', {
     attribution: '&copy; MapTiler &copy; OpenStreetMap contributors',
-    maxZoom: 19
+    maxZoom: 19,
+    tileSize: 512,
+    zoomOffset: -1
   }).addTo(mapa);
 }
 
@@ -211,16 +213,18 @@ function listeners() {
   });
 }
 
-// Modal y Leaflet para órbita con MapTiler (español)
+// Modal y Leaflet para órbita con MapTiler (tu propio estilo)
 function mostrarOrbitaEnModal(tle, nombre, lugar_caida = null) {
   const modal = new bootstrap.Modal(document.getElementById('orbitaModal'));
   document.getElementById('orbitaModalLabel').textContent = `Órbita de ${nombre}`;
   setTimeout(() => {
     if (!orbitaMap) {
       orbitaMap = L.map('orbita-map', { zoomControl: true, maxZoom: 19 }).setView([0,0], 2);
-      L.tileLayer('https://api.maptiler.com/maps/streets/{z}/{x}/{y}.png?key=TU_API_KEY&language=es', {
+      L.tileLayer('https://api.maptiler.com/tiles/019842c3-c233-72bc-87bb-6a932bad4058/{z}/{x}/{y}.png?key=Qz3BoFqkGmS3yT8lCQhS', {
         attribution: '&copy; MapTiler &copy; OpenStreetMap contributors',
-        maxZoom: 19
+        maxZoom: 19,
+        tileSize: 512,
+        zoomOffset: -1
       }).addTo(orbitaMap);
     }
     if (orbitaLayer) {
