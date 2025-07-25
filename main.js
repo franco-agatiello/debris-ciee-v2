@@ -1,7 +1,8 @@
 let debris = [];
 let mapa, capaPuntos, capaCalor, modo = "puntos";
 let leyendaPuntos, leyendaCalor;
-let lastOrbitPolyline = null;
+let orbitaMap = null;
+let orbitaLayer = null;
 
 const iconoAmarillo = L.icon({
   iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-yellow.png',
@@ -9,7 +10,7 @@ const iconoAmarillo = L.icon({
   iconAnchor: [9, 29],
   popupAnchor: [1, -30]
 });
-const iconoVerde = L.L.icon({
+const iconoVerde = L.icon({
   iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png',
   iconSize: [18, 29],
   iconAnchor: [9, 29],
@@ -33,6 +34,7 @@ function poblarFiltros() {
   const paises = Array.from(new Set(debris.map(d => d.pais)));
   const paisSelect = document.getElementById("pais");
   paisSelect.innerHTML = '<option value="">Todos</option>' + paises.map(p => `<option value="${p}">${p}</option>`).join('');
+
   const materiales = Array.from(new Set(debris.map(d => d.material_principal)));
   const materialSelect = document.getElementById("material");
   materialSelect.innerHTML = '<option value="">Todos</option>' + materiales.map(m => `<option value="${m}">${m}</option>`).join('');
@@ -69,9 +71,9 @@ function filtrarDatos() {
 }
 
 function marcadorPorFecha(fecha) {
-  const año = parseInt(fecha.slice(0,4), 10);
-  if (año < 2000) return iconoAmarillo;
-  if (año <= 2018) return iconoVerde;
+  const year = parseInt(fecha.slice(0,4), 10);
+  if (year < 2000) return iconoAmarillo;
+  if (year <= 2018) return iconoVerde;
   return iconoRojo;
 }
 
@@ -82,6 +84,7 @@ function actualizarBotonesModo() {
 
 function actualizarMapa() {
   const datosFiltrados = filtrarDatos();
+
   if (capaPuntos) {
     capaPuntos.clearLayers();
     try { mapa.removeLayer(capaPuntos); } catch (e) {}
@@ -91,44 +94,54 @@ function actualizarMapa() {
     mapa.removeLayer(capaCalor);
     capaCalor = null;
   }
+
   if (leyendaPuntos) leyendaPuntos.remove();
   if (leyendaCalor) leyendaCalor.remove();
+
   if (modo === "puntos") {
     capaPuntos = L.layerGroup();
     datosFiltrados.forEach(d => {
       const popupContenido = `
         <strong>${d.nombre}</strong><br>
         País: ${d.pais}<br>
-        Masa caída: ${d.tamano_caida_kg ?? "?"} kg<br>
-        Material: ${d.material_principal ?? "?"}<br>
+        Masa caída: ${d.tamano_caida_kg} kg<br>
+        Material: ${d.material_principal}<br>
         Inclinación órbita: ${d.inclinacion_orbita ?? "?"}°<br>
         Fecha: ${d.fecha}<br>
-        ${d.imagen ? `<img src="${d.imagen}" alt="${d.nombre}">` : ''}
-        <br>
-        ${d.tle && d.tle.line1 && d.tle.line2 ? `
-          <button class="btn btn-sm btn-outline-primary mt-2" onclick='mostrarOrbita(${JSON.stringify(d.tle)}, ${JSON.stringify(d.reentry?.epoch ?? d.fecha)})'>
-            Ver última órbita
-          </button>
-        ` : ''}
+        ${d.imagen ? `<img src="${d.imagen}" alt="${d.nombre}"><br>` : ''}
+        ${d.tle && d.tle.length === 2 ? `<button class="btn btn-sm btn-info mt-2 ver-orbita" data-nombre="${encodeURIComponent(d.nombre)}">Ver última órbita</button>` : ''}
       `;
-      const marcador = L.marker([d.lugar_caida.lat, d.lugar_caida.lon], {icon: marcadorPorFecha(d.fecha)})
+      const marker = L.marker([d.lugar_caida.lat, d.lugar_caida.lon], {icon: marcadorPorFecha(d.fecha)})
         .bindPopup(popupContenido, {autoPan: true});
-      marcador.on('popupopen', function(e) {
+
+      // Ajustar el popup cuando la imagen termine de cargar
+      marker.on('popupopen', function(e) {
         const imgs = e.popup._contentNode.querySelectorAll('img');
         imgs.forEach(function(img) {
-          img.addEventListener('load', function() { e.popup.update(); });
+          img.addEventListener('load', function() {
+            e.popup.update();
+          });
         });
       });
-      capaPuntos.addLayer(marcador);
+
+      capaPuntos.addLayer(marker);
     });
     capaPuntos.addTo(mapa);
     mostrarLeyendaPuntos();
   } else {
     const heatData = datosFiltrados.map(d => [d.lugar_caida.lat, d.lugar_caida.lon]);
     if (heatData.length) {
-      capaCalor = L.heatLayer(heatData, { 
-        radius: 30, blur: 25, minOpacity: 0.4, max: 30, 
-        gradient: { 0.1: 'blue', 0.3: 'lime', 0.6: 'yellow', 1.0: 'red' } 
+      capaCalor = L.heatLayer(heatData, {
+        radius: 30,
+        blur: 25,
+        minOpacity: 0.4,
+        max: 30,
+        gradient: {
+          0.1: 'blue',
+          0.3: 'lime',
+          0.6: 'yellow',
+          1.0: 'red'
+        }
       }).addTo(mapa);
     }
     mostrarLeyendaCalor();
@@ -136,115 +149,16 @@ function actualizarMapa() {
   actualizarBotonesModo();
 }
 
-// --------- INTERPOLACIÓN EN EL ANTIMERIDIANO ---------
-function haversineDistance(lat1, lon1, lat2, lon2) {
-  const R = 6371;
-  const toRad = x => x * Math.PI / 180;
-  const dLat = toRad(lat2-lat1);
-  const dLon = toRad(lon2-lon1);
-  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-            Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
-            Math.sin(dLon/2) * Math.sin(dLon/2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-  return R * c;
-}
-
-function normalizeLongitude(lon) {
-  let l = lon;
-  while (l < -180) l += 360;
-  while (l > 180) l -= 360;
-  return l;
-}
-
-function interpolateDatelineCrossing(p1, p2) {
-  let lon1 = normalizeLongitude(p1[1]);
-  let lon2 = normalizeLongitude(p2[1]);
-  let lat1 = p1[0], lat2 = p2[0];
-  let lonTarget = lon1 > 0 ? 180 : -180;
-  let deltaLon = lon2 - lon1;
-  if (Math.abs(deltaLon) < 1e-3) return null;
-  let t = (lonTarget - lon1) / deltaLon;
-  let latTarget = lat1 + (lat2 - lat1) * t;
-  return [latTarget, lonTarget];
-}
-
-function splitAndInterpolateOnJump(points) {
-  if (points.length < 2) return [points];
-  let segments = [];
-  let currentSegment = [points[0]];
-
-  for (let i = 1; i < points.length; i++) {
-    const prev = points[i - 1];
-    const curr = points[i];
-    const prevLon = normalizeLongitude(prev[1]);
-    const currLon = normalizeLongitude(curr[1]);
-    const lonDiff = Math.abs(currLon - prevLon);
-    const dist = haversineDistance(prev[0], prevLon, curr[0], currLon);
-    if (lonDiff > 180 || dist > 2000) {
-      const interp = interpolateDatelineCrossing(prev, curr);
-      if (interp) {
-        currentSegment.push(interp);
-        segments.push(currentSegment);
-        currentSegment = [ [interp[0], interp[1] > 0 ? -180 : 180], curr ];
-      } else {
-        segments.push(currentSegment);
-        currentSegment = [curr];
-      }
-    } else {
-      currentSegment.push(curr);
+// Manejo del botón "Ver última órbita"
+document.addEventListener('click', function(e) {
+  if (e.target.classList.contains('ver-orbita')) {
+    const nombre = decodeURIComponent(e.target.getAttribute('data-nombre'));
+    const sat = debris.find(x => x.nombre === nombre);
+    if (sat && sat.tle && sat.tle.length === 2) {
+      mostrarOrbitaEnModal(sat.tle, sat.nombre);
     }
   }
-  if (currentSegment.length > 1) segments.push(currentSegment);
-  return segments;
-}
-
-function mostrarOrbita(tle, epoch) {
-  if (lastOrbitPolyline) {
-    mapa.removeLayer(lastOrbitPolyline);
-    lastOrbitPolyline = null;
-  }
-  const satrec = satellite.twoline2satrec(tle.line1, tle.line2);
-  const fechaReentrada = epoch ? new Date(epoch) : new Date();
-  const minutosPorRev = 1440 / satrec.no;
-  const tiempoTotal = Math.min(minutosPorRev, 90);
-  const paso = 0.2; // 12 segundos
-  const points = [];
-  for (let t = -tiempoTotal; t <= 0; t += paso) {
-    const fecha = new Date(fechaReentrada.getTime() + t * 60 * 1000);
-    const posVel = satellite.propagate(satrec, fecha);
-    if (posVel.position) {
-      const gmst = satellite.gstime(fecha);
-      const geo = satellite.eciToGeodetic(posVel.position, gmst);
-      const lat = satellite.degreesLat(geo.latitude);
-      let lon = satellite.degreesLong(geo.longitude);
-      lon = normalizeLongitude(lon);
-      if (isFinite(lat) && isFinite(lon)) {
-        points.push([lat, lon]);
-      }
-    }
-  }
-  const segments = splitAndInterpolateOnJump(points);
-  lastOrbitPolyline = L.layerGroup();
-  segments.forEach(segment => {
-    if (segment.length > 1) {
-      L.polyline(segment, { color: 'blue', weight: 2, opacity: 0.7 }).addTo(lastOrbitPolyline);
-    }
-  });
-  lastOrbitPolyline.addTo(mapa);
-  if (points.length > 0) mapa.fitBounds(L.latLngBounds(points));
-}
-// --------- FIN INTERPOLACIÓN ---------
-
-function initMapa() {
-  mapa = L.map('map').setView([0, 0], 2);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(mapa);
-  mapa.on('popupclose', function () {
-    if (lastOrbitPolyline) {
-      mapa.removeLayer(lastOrbitPolyline);
-      lastOrbitPolyline = null;
-    }
-  });
-}
+});
 
 function mostrarLeyendaPuntos() {
   leyendaPuntos = L.control({position: 'bottomright'});
@@ -267,11 +181,17 @@ function mostrarLeyendaCalor() {
     const colors = ['blue', 'lime', 'yellow', 'red'];
     div.innerHTML += '<strong>Densidad de caídas</strong><br>';
     for (let i = 0; i < grades.length; i++) {
-      div.innerHTML += `<i style="background:${colors[i]};width:14px;height:14px;display:inline-block;margin-right:5px;border-radius:2px;"></i> ${grades[i]}<br>`;
+      div.innerHTML +=
+        `<i style="background:${colors[i]};width:14px;height:14px;display:inline-block;margin-right:5px;border-radius:2px;"></i> ${grades[i]}<br>`;
     }
     return div;
   };
   leyendaCalor.addTo(mapa);
+}
+
+function initMapa() {
+  mapa = L.map('map').setView([0, 0], 2);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(mapa);
 }
 
 function listeners() {
@@ -279,11 +199,55 @@ function listeners() {
     document.getElementById(id).addEventListener("change", actualizarMapa);
   });
   document.getElementById("modo-puntos").addEventListener("click", () => {
-    modo = "puntos"; actualizarMapa();
+    modo = "puntos";
+    actualizarMapa();
   });
   document.getElementById("modo-calor").addEventListener("click", () => {
-    modo = "calor"; actualizarMapa();
+    modo = "calor";
+    actualizarMapa();
   });
+}
+
+// Modal y Leaflet para órbita
+function mostrarOrbitaEnModal(tle, nombre) {
+  // Inicializa el modal
+  const modal = new bootstrap.Modal(document.getElementById('orbitaModal'));
+  document.getElementById('orbitaModalLabel').textContent = `Órbita de ${nombre}`;
+  setTimeout(() => {
+    if (!orbitaMap) {
+      orbitaMap = L.map('orbita-map').setView([0,0], 2);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(orbitaMap);
+    }
+    if (orbitaLayer) {
+      orbitaMap.removeLayer(orbitaLayer);
+      orbitaLayer = null;
+    }
+    calcularYMostrarOrbita(tle, orbitaMap);
+    orbitaMap.invalidateSize();
+  }, 400);
+  modal.show();
+}
+
+function calcularYMostrarOrbita(tle, leafletMap) {
+  // Usar satellite.js para calcular la órbita (una vuelta, 90 minutos)
+  const satrec = satellite.twoline2satrec(tle[0], tle[1]);
+  const now = new Date();
+  const points = [];
+  for (let i = 0; i <= 90; i += 1) { // cada minuto
+    const time = new Date(now.getTime() + i * 60 * 1000);
+    const positionAndVelocity = satellite.propagate(satrec, time);
+    const positionEci = positionAndVelocity.position;
+    if (!positionEci) continue;
+    const gmst = satellite.gstime(time);
+    const positionGd = satellite.eciToGeodetic(positionEci, gmst);
+    const lat = satellite.degreesLat(positionGd.latitude);
+    const lon = satellite.degreesLong(positionGd.longitude);
+    points.push([lat, lon]);
+  }
+  if (points.length > 0) {
+    orbitaLayer = L.polyline(points, {color: 'orange', weight: 3}).addTo(leafletMap);
+    leafletMap.fitBounds(orbitaLayer.getBounds(), {padding: [30,30]});
+  }
 }
 
 document.addEventListener("DOMContentLoaded", () => {
