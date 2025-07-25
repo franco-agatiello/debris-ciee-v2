@@ -263,18 +263,35 @@ function mostrarOrbitaEnModal(tle, nombre) {
 function calcularYMostrarOrbita(tle, leafletMap) {
   const satrec = satellite.twoline2satrec(tle[0], tle[1]);
   const now = new Date();
-  let segments = [[]];
-  let lastLon = null;
-  for (let i = 0; i <= 90; i += 1) { // cada minuto
+  const points = [];
+  for (let i = 0; i <= 90; i += 1) {
     const time = new Date(now.getTime() + i * 60 * 1000);
     const posVel = satellite.propagate(satrec, time);
-    const pos = posVel.position;
-    if (!pos) continue;
+    const positionEci = posVel.position;
+    if (!positionEci) continue;
     const gmst = satellite.gstime(time);
-    const gd = satellite.eciToGeodetic(pos, gmst);
-    const lat = satellite.degreesLat(gd.latitude);
-    let lon = satellite.degreesLong(gd.longitude);
-
+    const positionGd = satellite.eciToGeodetic(positionEci, gmst);
+    const lat = satellite.degreesLat(positionGd.latitude);
+    const lon = satellite.degreesLong(positionGd.longitude);
+    if (isFinite(lat) && isFinite(lon)) points.push([lat, lon]);
+  }
+  if (orbitaLayer) {
+    leafletMap.removeLayer(orbitaLayer);
+    orbitaLayer = null;
+  }
+  if (points.length > 1) {
+    orbitaLayer = L.polyline(points, {color: 'orange', weight: 3}).addTo(leafletMap);
+    if (typeof orbitaLayer.getBounds === "function") {
+      leafletMap.fitBounds(orbitaLayer.getBounds(), {padding: [30,30]});
+    }
+  } else if (points.length === 1) {
+    orbitaLayer = L.marker(points[0], {color: 'orange'}).addTo(leafletMap);
+    leafletMap.setView(points[0], 4);
+  } else {
+    orbitaLayer = null;
+    alert("No se pudo calcular la órbita para este TLE.");
+  }
+}
     // Corrige salto de antimeridiano (si la distancia de longitud > 180, empieza nuevo segmento)
     if (lastLon !== null && Math.abs(lon - lastLon) > 180) {
       segments.push([]);
