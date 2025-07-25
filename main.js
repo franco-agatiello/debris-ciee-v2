@@ -192,7 +192,12 @@ function mostrarLeyendaCalor() {
 
 function initMapa() {
   mapa = L.map('map').setView([0, 0], 2);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(mapa);
+  // Mapa base IGN Argentina
+  L.tileLayer('https://wms.ign.gob.ar/geoserver/gwc/service/tms/1.0.0/capabaseargenmap@EPSG%3A3857@png/{z}/{x}/{-y}.png', {
+    attribution: '<a href="http://leafletjs.com" title="A JS library for interactive maps">Leaflet</a> | <a href="http://www.ign.gob.ar/AreaServicios/Argenmap/IntroduccionV2" target="_blank">Instituto Geográfico Nacional</a> + <a href="http://www.osm.org/copyright" target="_blank">OpenStreetMap</a>',
+    minZoom: 3,
+    maxZoom: 18
+  }).addTo(mapa);
 }
 
 function listeners() {
@@ -209,14 +214,19 @@ function listeners() {
   });
 }
 
-// Modal y Leaflet para órbita, con restricción a un solo mapa y marcador de reentrada
+// Modal y Leaflet para órbita, con restricción a un solo mapa y marcador de reentrada en IGN
 function mostrarOrbitaEnModal(tle, nombre, lugar_caida = null) {
   const modal = new bootstrap.Modal(document.getElementById('orbitaModal'));
   document.getElementById('orbitaModalLabel').textContent = `Órbita de ${nombre}`;
   setTimeout(() => {
     if (!orbitaMap) {
       orbitaMap = L.map('orbita-map', { zoomControl: true }).setView([0,0], 2);
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(orbitaMap);
+      // Mapa base IGN Argentina también en el modal
+      L.tileLayer('https://wms.ign.gob.ar/geoserver/gwc/service/tms/1.0.0/capabaseargenmap@EPSG%3A3857@png/{z}/{x}/{-y}.png', {
+        attribution: '<a href="http://leafletjs.com" title="A JS library for interactive maps">Leaflet</a> | <a href="http://www.ign.gob.ar/AreaServicios/Argenmap/IntroduccionV2" target="_blank">Instituto Geográfico Nacional</a> + <a href="http://www.osm.org/copyright" target="_blank">OpenStreetMap</a>',
+        minZoom: 3,
+        maxZoom: 18
+      }).addTo(orbitaMap);
     }
     if (orbitaLayer) {
       orbitaMap.removeLayer(orbitaLayer);
