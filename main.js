@@ -235,8 +235,8 @@ function calcularYMostrarOrbita(tle, leafletMap) {
   for (let i = 0; i <= 90; i += 1) { // cada minuto
     const time = new Date(now.getTime() + i * 60 * 1000);
     const posVel = satellite.propagate(satrec, time);
+    if (!posVel || !posVel.position) continue; // <-- Robustez aquí
     const positionEci = posVel.position;
-    if (!positionEci) continue;
     const gmst = satellite.gstime(time);
     const positionGd = satellite.eciToGeodetic(positionEci, gmst);
     const lat = satellite.degreesLat(positionGd.latitude);
