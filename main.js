@@ -202,23 +202,39 @@ function listeners() {
   });
 }
 
-// Segmenta la órbita en tramos para evitar líneas rectas por el antimeridiano
-function segmentarOrbitaPorAntimeridiano(positions) {
+// Convierte la época de un TLE a un objeto Date
+function tleEpochToDate(epochStr) {
+  let year = parseInt(epochStr.slice(0,2),10);
+  year += (year < 57) ? 2000 : 1900; // Por convención TLE
+  const dayOfYear = parseFloat(epochStr.slice(2));
+  const date = new Date(Date.UTC(year, 0, 1, 0, 0, 0));
+  date.setUTCDate(date.getUTCDate() + Math.floor(dayOfYear) - 1);
+  const msInDay = 24*60*60*1000;
+  date.setTime(date.getTime() + Math.round(msInDay * (dayOfYear % 1)));
+  return date;
+}
+
+// Segmenta la órbita en tramos para evitar líneas rectas por el antimeridiano o saltos grandes
+function segmentarOrbitaPorSaltos(positions, saltoMax = 30) {
   let segmentos = [];
   let segmentoActual = [];
   for (let i = 0; i < positions.length; i++) {
+    const p = positions[i];
+    // Ignora puntos inválidos
+    if (!Array.isArray(p) || isNaN(p[0]) || isNaN(p[1])) continue;
+
     if (i > 0) {
-      const lon1 = positions[i-1][1];
-      const lon2 = positions[i][1];
-      if (Math.abs(lon2 - lon1) > 180) {
-        // Corte por antimeridiano, termina el segmento actual y empieza uno nuevo
-        segmentos.push(segmentoActual);
+      const [lat1, lon1] = positions[i-1];
+      const [lat2, lon2] = p;
+      // Corte si cambio de longitud o latitud es muy grande
+      if (Math.abs(lon2 - lon1) > 180 || Math.abs(lat2 - lat1) > saltoMax) {
+        if (segmentoActual.length > 1) segmentos.push(segmentoActual);
         segmentoActual = [];
       }
     }
-    segmentoActual.push(positions[i]);
+    segmentoActual.push(p);
   }
-  if (segmentoActual.length > 0) segmentos.push(segmentoActual);
+  if (segmentoActual.length > 1) segmentos.push(segmentoActual);
   return segmentos;
 }
 
@@ -236,7 +252,6 @@ function mostrarOrbitaParaDebris(debris) {
   }
   // Espera a que el modal se muestre completamente antes de crear el mapa
   setTimeout(() => {
-    // Inicializa el mapa en el modal
     window.orbitaLeafletMap = L.map('orbita-map').setView([0, 0], 2);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(window.orbitaLeafletMap);
 
@@ -246,11 +261,14 @@ function mostrarOrbitaParaDebris(debris) {
       const tleLines = debris.tle.split('\n');
       if (tleLines.length >= 2) {
         const satrec = satellite.twoline2satrec(tleLines[0], tleLines[1]);
-        const now = new Date();
+        // Usar fecha base igual a la época del TLE
+        const epochStr = tleLines[0].substring(18, 32).replace(/\s+/g, '');
+        let now = tleEpochToDate(epochStr);
         const positions = [];
-        // Solo 100 puntos para eficiencia
+        // 100 puntos en torno a la época TLE
         for (let i = 0; i <= 100; i++) {
-          const time = new Date(now.getTime() - (100 - i) * 60 * 1000);
+          // +/- 50 minutos desde la época
+          const time = new Date(now.getTime() + (i-50) * 60 * 1000);
           const gmst = satellite.gstime(time);
           const posVel = satellite.propagate(satrec, time);
           if (posVel.position) {
@@ -260,11 +278,14 @@ function mostrarOrbitaParaDebris(debris) {
             // Normaliza -180/180 para mayor robustez
             if (lon > 180) lon -= 360;
             if (lon < -180) lon += 360;
-            positions.push([lat, lon]);
+            // Evita NaN
+            if (!isNaN(lat) && !isNaN(lon)) {
+              positions.push([lat, lon]);
+            }
           }
         }
-        // Segmenta la órbita para evitar líneas rectas cruzando el mapa
-        const segmentos = segmentarOrbitaPorAntimeridiano(positions);
+        // Segmenta la órbita para evitar líneas rectas cruzando el mapa o saltos
+        const segmentos = segmentarOrbitaPorSaltos(positions, 30);
         segmentos.forEach(seg => {
           if (seg.length > 1) {
             L.polyline(seg, {color: 'orange', weight: 2}).addTo(window.orbitaLeafletMap);
