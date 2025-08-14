@@ -1,16 +1,31 @@
 [
   {
-    "nombre": "ISS (ZARYA)",
-    "pais": "Internacional",
-    "tamano_caida_kg": 420000,
-    "material_principal": "Aleación de aluminio",
-    "fecha": "2025-07-25",
-    "inclinacion_orbita": 51.64,
+    "nombre": "VANGUARD 1 DEB",
+    "pais": "USA",
+    "tamano_caida_kg": null,
+    "material_principal": null,
+    "inclinacion_orbita": 47.9216,
+    "fecha": "2011-01-18",
     "lugar_caida": {
-      "lat": 0.0,
-      "lon": -80.0
+      "lat": 45,
+      "lon": -87
     },
-    "imagen": "https://upload.wikimedia.org/wikipedia/commons/a/a9/STS-132_International_Space_Station_after_undocking.jpg",
-    "tle": "1 03145U 68014B   11018.33679383 -.00007350 +60653-5 +00000-0 0  9996\n2 03145 047.9216 051.8690 9174194 109.4430 352.9566 00.38858306057648"
+    "imagen": null,
+    "tle": "1 03145U 68014B   11018.33679383 -.00007350 +60653-5 +00000-0 0  9996\t2 03145 047.9216 051.8690 9174194 109.4430 352.9566 00.38858306057648"
+  },
+  {
+    "nombre": "COSMOS 419",
+    "pais": "RUSIA",
+    "tamano_caida_kg": null,
+    "material_principal": null,
+    "inclinacion_orbita": 81.2250,
+    "fecha": "2023-11-02",
+    "lugar_caida": {
+      "lat": 28,
+      "lon": 174
+    },
+    "imagen": null,
+    "tle": "1  5117U 71028A   23306.96075823  .11989941 -97905-6  23795-3 0  9994\t2  5117  81.2250  93.0956 0009311 253.9116 246.2567 16.46640310871499"
   }
+  // ...agrega más debris aquí en el mismo formato
 ]
