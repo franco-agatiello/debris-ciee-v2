@@ -167,20 +167,25 @@ window.mostrarOrbita = function(index) {
     const satrec = satellite.twoline2satrec(d.tle1, d.tle2);
 
     // Calcula el periodo orbital en minutos usando el mean motion
-    // meanMotion = revoluciones por día (campos 7 de la línea 2 del TLE)
-    // satrec.no está en rad/min; convertimos a rev/día para mantener la fórmula estándar
-    const meanMotion = satrec.no * 1440 / (2 * Math.PI); // satrec.no en rad/min, 1440 min/día
-    const periodoMin = 1440 / meanMotion; // minutos para 1 vuelta
+    const meanMotion = satrec.no * 1440 / (2 * Math.PI); // satrec.no en rad/min
+    const periodoMin = 1440 / meanMotion;
+
+    // Cuántas vueltas querés mostrar (3 o 4)
+    const vueltas = 4;
+    const minutosATrazar = periodoMin * vueltas;
 
     // Epoch date
     const jday = satrec.epochdays;
     const year = satrec.epochyr < 57 ? satrec.epochyr + 2000 : satrec.epochyr + 1900;
     const epochDate = new Date(Date.UTC(year, 0, 1, 0, 0, 0, 0) + (jday - 1) * 24 * 60 * 60 * 1000);
 
+    // Opcional: ¿Querés que las vueltas sean "alrededor del punto de caída"? Si sí, buscá el tiempo más cercano a ese punto.
+    // Por ahora, se traza desde el epoch del TLE.
+
     let segments = [], segment = [], prevLon = null;
 
-    // Simula sólo 1 vuelta, paso de 1 minuto
-    for (let min = 0; min <= periodoMin; min += 1) {
+    // Simula las vueltas, paso de 1 minuto
+    for (let min = 0; min <= minutosATrazar; min += 1) {
       const time = new Date(epochDate.getTime() + min * 60000);
       const gmst = satellite.gstime(time);
       const pos = satellite.propagate(satrec, time);
@@ -197,9 +202,9 @@ window.mostrarOrbita = function(index) {
       lon = ((lon + 180) % 360 + 360) % 360 - 180;
 
       if (prevLon !== null) {
-        let delta = lon - prevLon;
-        // Detecta salto de longitud y corta segmento
-        if (Math.abs(delta) > 180) {
+        let delta = Math.abs(lon - prevLon);
+        // Si el salto de longitud es grande (cruce de ±180°), corta el segmento
+        if (delta > 30) { // Si ves cortes feos, podés bajar a 20
           if (segment.length > 1) segments.push(segment);
           segment = [];
         }
@@ -210,7 +215,7 @@ window.mostrarOrbita = function(index) {
     }
     if (segment.length > 1) segments.push(segment);
 
-    // Dibuja la órbita (solo 1 vuelta)
+    // Dibuja la órbita (3-4 vueltas)
     segments.forEach(seg => {
       L.polyline(seg, { color: "#3f51b5", weight: 2 }).addTo(mapaOrbita);
     });
