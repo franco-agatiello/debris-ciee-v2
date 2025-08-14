@@ -195,7 +195,7 @@ function listeners() {
   });
 }
 
-// Visualización de órbita: usando el periodo orbital para mostrar la última órbita antes de la caída
+// Visualización de órbita a partir del TLE (con corte en antimeridiano)
 window.mostrarOrbita = function(index) {
   const d = filtrarDatos()[index];
   if (!d.tle1 || !d.tle2) return alert("No hay TLE para este debris.");
@@ -209,21 +209,16 @@ window.mostrarOrbita = function(index) {
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(mapaOrbita);
 
     const satrec = satellite.twoline2satrec(d.tle1, d.tle2);
-
-    // Calcular el periodo orbital en minutos (revs/día)
-    let periodMinutes = 1440 / satrec.no;
-
-    // Tomar la fecha de caída como referencia (idealmente con hora, aquí se usa medianoche)
-    const fechaCaida = new Date(d.fecha + "T00:00:00Z");
-    const inicioOrbita = new Date(fechaCaida.getTime() - periodMinutes * 60 * 1000);
+    const jday = satrec.epochdays;
+    const year = satrec.epochyr < 57 ? satrec.epochyr + 2000 : satrec.epochyr + 1900;
+    const epochDate = new Date(Date.UTC(year, 0, 1, 0, 0, 0, 0) + (jday - 1) * 24 * 60 * 60 * 1000);
 
     let segments = [];
     let segment = [];
     let prevLon = null;
 
-    // Recorrer desde el inicio de la última órbita hasta la caída
-    for (let m = 0; m <= periodMinutes; m += 2) {
-      const time = new Date(inicioOrbita.getTime() + m*60*1000);
+    for (let m = -90; m <= 90; m += 2) {
+      const time = new Date(epochDate.getTime() + m*60*1000);
       const gmst = satellite.gstime(time);
       const pos = satellite.propagate(satrec, time);
       if (pos.position) {
@@ -233,6 +228,7 @@ window.mostrarOrbita = function(index) {
         if (isNaN(lat) || isNaN(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) continue;
 
         if (prevLon !== null && Math.abs(lon - prevLon) > 180) {
+          // Salto de antimeridiano, corta segmento
           if (segment.length > 1) segments.push(segment);
           segment = [];
         }
@@ -242,6 +238,7 @@ window.mostrarOrbita = function(index) {
     }
     if (segment.length > 1) segments.push(segment);
 
+    // Dibuja cada segmento como una polilínea separada
     segments.forEach(seg => {
       L.polyline(seg, {color:"#3f51b5", weight:2}).addTo(mapaOrbita);
     });
