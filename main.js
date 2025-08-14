@@ -1,7 +1,6 @@
 let debris = [];
 let mapa, capaPuntos, capaCalor, modo = "puntos";
 let leyendaPuntos, leyendaCalor;
-window.orbitLayer = null; // Global para la órbita
 
 // Colores personalizados por rango de año
 const iconoAzul = L.icon({
@@ -108,10 +107,6 @@ function actualizarMapa() {
   }
   if (leyendaPuntos) leyendaPuntos.remove();
   if (leyendaCalor) leyendaCalor.remove();
-  if (window.orbitLayer) {
-    mapa.removeLayer(window.orbitLayer);
-    window.orbitLayer = null;
-  }
 
   if (modo === "puntos") {
     capaPuntos = L.layerGroup();
@@ -207,39 +202,49 @@ function listeners() {
   });
 }
 
-// Dibuja la órbita usando satellite.js (requiere que el debris tenga el campo tle)
+// Ventana modal con mapa para la órbita
 function mostrarOrbitaParaDebris(debris) {
-  if (!debris.tle) return;
-  if (window.orbitLayer) {
-    mapa.removeLayer(window.orbitLayer);
-    window.orbitLayer = null;
+  // Abre el modal
+  const modal = new bootstrap.Modal(document.getElementById('orbitaModal'));
+  document.getElementById('orbitaModalLabel').textContent = `Órbita de ${debris.nombre || ''}`;
+  modal.show();
+
+  // Limpia el mapa anterior si existe
+  if (window.orbitaLeafletMap) {
+    window.orbitaLeafletMap.remove();
+    window.orbitaLeafletMap = null;
   }
+  // Espera a que el modal se muestre completamente antes de crear el mapa
+  setTimeout(() => {
+    // Inicializa el mapa en el modal
+    window.orbitaLeafletMap = L.map('orbita-map').setView([0, 0], 2);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(window.orbitaLeafletMap);
 
-  // Separar el TLE en dos líneas
-  const tleLines = debris.tle.split("\n");
-  if (tleLines.length < 2) return;
-
-  const satrec = satellite.twoline2satrec(tleLines[0], tleLines[1]);
-  const now = new Date();
-
-  // Calcular puntos para la órbita en los últimos 100 minutos, cada 1 minuto
-  const positions = [];
-  for (let i = 0; i <= 100; i += 1) {
-    const time = new Date(now.getTime() - (100 - i) * 60 * 1000);
-    const gmst = satellite.gstime(time);
-    const positionAndVelocity = satellite.propagate(satrec, time);
-    if (positionAndVelocity.position) {
-      const coords = satellite.eciToGeodetic(positionAndVelocity.position, gmst);
-      const lat = satellite.degreesLat(coords.latitude);
-      const lon = satellite.degreesLong(coords.longitude);
-      positions.push([lat, lon]);
+    // Calcula los puntos de la órbita usando satellite.js
+    if (debris.tle) {
+      const tleLines = debris.tle.split('\n');
+      if (tleLines.length >= 2) {
+        const satrec = satellite.twoline2satrec(tleLines[0], tleLines[1]);
+        const now = new Date();
+        const positions = [];
+        for (let i = 0; i <= 100; i++) {
+          const time = new Date(now.getTime() - (100 - i) * 60 * 1000);
+          const gmst = satellite.gstime(time);
+          const posVel = satellite.propagate(satrec, time);
+          if (posVel.position) {
+            const geo = satellite.eciToGeodetic(posVel.position, gmst);
+            const lat = satellite.degreesLat(geo.latitude);
+            const lon = satellite.degreesLong(geo.longitude);
+            positions.push([lat, lon]);
+          }
+        }
+        if (positions.length > 1) {
+          L.polyline(positions, {color: 'orange', weight: 2}).addTo(window.orbitaLeafletMap);
+          window.orbitaLeafletMap.fitBounds(positions);
+        }
+      }
     }
-  }
-
-  if (positions.length > 1) {
-    window.orbitLayer = L.polyline(positions, {color: 'orange', weight: 2}).addTo(mapa);
-    mapa.fitBounds(window.orbitLayer.getBounds());
-  }
+  }, 300); // Da tiempo al modal para mostrarse y el div esté visible
 }
 
 document.addEventListener("DOMContentLoaded", () => {
