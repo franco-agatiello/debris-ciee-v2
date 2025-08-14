@@ -195,7 +195,7 @@ function listeners() {
   });
 }
 
-// Visualización de órbita a partir del TLE
+// Visualización de órbita a partir del TLE (con corte en antimeridiano)
 window.mostrarOrbita = function(index) {
   const d = filtrarDatos()[index];
   if (!d.tle1 || !d.tle2) return alert("No hay TLE para este debris.");
@@ -208,15 +208,15 @@ window.mostrarOrbita = function(index) {
     mapaOrbita = L.map('mapOrbita').setView([d.lugar_caida.lat, d.lugar_caida.lon], 3);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(mapaOrbita);
 
-    // Calcular puntos de la órbita usando satellite.js
     const satrec = satellite.twoline2satrec(d.tle1, d.tle2);
-
-    // Obtener la época del TLE en fecha JS
     const jday = satrec.epochdays;
     const year = satrec.epochyr < 57 ? satrec.epochyr + 2000 : satrec.epochyr + 1900;
     const epochDate = new Date(Date.UTC(year, 0, 1, 0, 0, 0, 0) + (jday - 1) * 24 * 60 * 60 * 1000);
 
-    let positions = [];
+    let segments = [];
+    let segment = [];
+    let prevLon = null;
+
     for (let m = -90; m <= 90; m += 2) {
       const time = new Date(epochDate.getTime() + m*60*1000);
       const gmst = satellite.gstime(time);
@@ -226,20 +226,33 @@ window.mostrarOrbita = function(index) {
         const lat = satellite.degreesLat(geo.latitude);
         const lon = satellite.degreesLong(geo.longitude);
         if (isNaN(lat) || isNaN(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) continue;
-        positions.push([lat, lon]);
+
+        if (prevLon !== null && Math.abs(lon - prevLon) > 180) {
+          // Salto de antimeridiano, corta segmento
+          if (segment.length > 1) segments.push(segment);
+          segment = [];
+        }
+        segment.push([lat, lon]);
+        prevLon = lon;
       }
     }
+    if (segment.length > 1) segments.push(segment);
 
-    if (positions.length > 1) {
-      L.polyline(positions, {color:"#3f51b5", weight:2}).addTo(mapaOrbita);
-    }
+    // Dibuja cada segmento como una polilínea separada
+    segments.forEach(seg => {
+      L.polyline(seg, {color:"#3f51b5", weight:2}).addTo(mapaOrbita);
+    });
 
     L.marker([d.lugar_caida.lat, d.lugar_caida.lon]).addTo(mapaOrbita)
       .bindPopup("Punto de caída")
       .openPopup();
 
-    if (positions.length > 1) {
-      mapaOrbita.fitBounds(positions);
+    if (segments.length && segments[0].length > 1) {
+      let bounds = segments[0].map(x => x);
+      for (let i = 1; i < segments.length; i++) {
+        bounds = bounds.concat(segments[i]);
+      }
+      mapaOrbita.fitBounds(bounds);
     } else {
       mapaOrbita.setView([d.lugar_caida.lat, d.lugar_caida.lon], 3);
     }
