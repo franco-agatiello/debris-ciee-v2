@@ -1,26 +1,47 @@
 [
   {
-    "nombre": "DEBRIS 03145",
-    "pais": "USA",
-    "tamano_caida_kg": 20,
-    "material_principal": "Aluminio",
-    "fecha": "2011-01-18",
-    "inclinacion_orbita": 47.92,
-    "lugar_caida": { "lat": 45, "lon": -87 },
-    "tle1": "1 03145U 68014B   11018.33679383 -.00007350 +60653-5 +00000-0 0  9996",
-    "tle2": "2 03145 047.9216 051.8690 9174194 109.4430 352.9566 00.38858306057648",
-    "imagen": null
+    "nombre": "STARLINK-11532",
+    "pais": "UNITED STATES OF AMERICA",
+    "tamano_caida_kg": null,
+    "material_principal": null,
+    "fecha": "2025-08-02",
+    "inclinacion_orbita": 43.0,
+    "lugar_caida": {
+      "lat": -21.0,
+      "lon": 139.8
+    },
+    "imagen": null,
+    "tle1": "",
+    "tle2": ""
   },
   {
-    "nombre": "DEBRIS 03835",
-    "pais": "USA",
-    "tamano_caida_kg": 18,
+    "nombre": "Ejemplo TLE 1",
+    "pais": "RUSSIA",
+    "tamano_caida_kg": 1000,
+    "material_principal": "Aluminio",
+    "fecha": "2011-01-18",
+    "inclinacion_orbita": 47.9,
+    "lugar_caida": {
+      "lat": 45.0,
+      "lon": -87.0
+    },
+    "imagen": null,
+    "tle1": "1 03145U 68014B   11018.33679383 -.00007350 +60653-5 +00000-0 0  9996",
+    "tle2": "2 03145 047.9216 051.8690 9174194 109.4430 352.9566 00.38858306057648"
+  },
+  {
+    "nombre": "Ejemplo TLE 2",
+    "pais": "CHINA",
+    "tamano_caida_kg": 500,
     "material_principal": "Titanio",
     "fecha": "2012-03-26",
-    "inclinacion_orbita": 81.11,
-    "lugar_caida": { "lat": 47, "lon": 95 },
+    "inclinacion_orbita": 81.1,
+    "lugar_caida": {
+      "lat": 47.0,
+      "lon": 95.0
+    },
+    "imagen": null,
     "tle1": "1 03835U 69029A   12086.76135367  .25198191 -97535-6  25232-3 0  9999",
-    "tle2": "2 03835 081.1165 230.5329 0011418 263.0265 097.6822 16.50605120355155",
-    "imagen": null
+    "tle2": "2 03835 081.1165 230.5329 0011418 263.0265 097.6822 16.50605120355155"
   }
 ]
