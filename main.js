@@ -1,3 +1,8 @@
+// --- main.js ---
+// Este archivo asume que cargas tus debris desde data.json, donde el campo "tle" es UNA SOLA LÍNEA
+// con las dos líneas separadas por \t (tabulación) o al menos dos espacios.
+// Requiere: leaflet.js, satellite.js
+
 let debris = [];
 let mapa, capaPuntos, capaCalor, modo = "puntos";
 let leyendaPuntos, leyendaCalor;
@@ -20,8 +25,10 @@ const iconoAmarillo = L.icon({
   iconSize: [18, 29], iconAnchor: [9, 29], popupAnchor: [1, -30]
 });
 
+// ------------------- Carga y filtrado de datos -------------------
+
 async function cargarDatos() {
-  const resp = await fetch('data/debris.json');
+  const resp = await fetch('data.json');
   debris = await resp.json();
   poblarFiltros();
   actualizarMapa();
@@ -65,6 +72,8 @@ function filtrarDatos() {
   });
 }
 
+// ------------------- Iconos y leyendas -------------------
+
 function marcadorPorFecha(fecha) {
   const year = parseInt(fecha.slice(0,4), 10);
   if (year >= 2004 && year <= 2010) return iconoAzul;
@@ -93,6 +102,8 @@ function popupContenidoDebris(d) {
   return contenido;
 }
 
+// ------------------- Actualización de mapa -------------------
+
 function actualizarMapa() {
   const datosFiltrados = filtrarDatos();
 
@@ -111,29 +122,33 @@ function actualizarMapa() {
   if (modo === "puntos") {
     capaPuntos = L.layerGroup();
     datosFiltrados.forEach(d => {
-      const marker = L.marker([d.lugar_caida.lat, d.lugar_caida.lon], {icon: marcadorPorFecha(d.fecha)})
-        .bindPopup(popupContenidoDebris(d), {autoPan: true});
-      marker.on('popupopen', function(e) {
-        const imgs = e.popup._contentNode.querySelectorAll('img');
-        imgs.forEach(function(img) {
-          img.addEventListener('load', function() {
-            e.popup.update();
+      if (d.lugar_caida && typeof d.lugar_caida.lat === 'number' && typeof d.lugar_caida.lon === 'number') {
+        const marker = L.marker([d.lugar_caida.lat, d.lugar_caida.lon], {icon: marcadorPorFecha(d.fecha)})
+          .bindPopup(popupContenidoDebris(d), {autoPan: true});
+        marker.on('popupopen', function(e) {
+          const imgs = e.popup._contentNode.querySelectorAll('img');
+          imgs.forEach(function(img) {
+            img.addEventListener('load', function() {
+              e.popup.update();
+            });
           });
+          // Listener para el botón de órbita
+          const btn = e.popup._contentNode.querySelector('.ver-orbita-btn');
+          if (btn) {
+            btn.addEventListener('click', function() {
+              mostrarOrbitaParaDebris(d);
+            });
+          }
         });
-        // Listener para el botón de órbita
-        const btn = e.popup._contentNode.querySelector('.ver-orbita-btn');
-        if (btn) {
-          btn.addEventListener('click', function() {
-            mostrarOrbitaParaDebris(d);
-          });
-        }
-      });
-      capaPuntos.addLayer(marker);
+        capaPuntos.addLayer(marker);
+      }
     });
     capaPuntos.addTo(mapa);
     mostrarLeyendaPuntos();
   } else {
-    const heatData = datosFiltrados.map(d => [d.lugar_caida.lat, d.lugar_caida.lon]);
+    const heatData = datosFiltrados
+      .filter(d => d.lugar_caida && typeof d.lugar_caida.lat === 'number' && typeof d.lugar_caida.lon === 'number')
+      .map(d => [d.lugar_caida.lat, d.lugar_caida.lon]);
     if (heatData.length) {
       capaCalor = L.heatLayer(heatData, {
         radius: 30,
@@ -183,6 +198,8 @@ function mostrarLeyendaCalor() {
   leyendaCalor.addTo(mapa);
 }
 
+// ------------------- Mapa base y listeners -------------------
+
 function initMapa() {
   mapa = L.map('map').setView([0, 0], 2);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(mapa);
@@ -202,43 +219,56 @@ function listeners() {
   });
 }
 
-// Convierte la época de un TLE a un objeto Date
-function tleEpochToDate(epochStr) {
-  let year = parseInt(epochStr.slice(0,2),10);
-  year += (year < 57) ? 2000 : 1900; // Por convención TLE
-  const dayOfYear = parseFloat(epochStr.slice(2));
-  const date = new Date(Date.UTC(year, 0, 1, 0, 0, 0));
-  date.setUTCDate(date.getUTCDate() + Math.floor(dayOfYear) - 1);
-  const msInDay = 24*60*60*1000;
-  date.setTime(date.getTime() + Math.round(msInDay * (dayOfYear % 1)));
-  return date;
-}
+// ------------------- TLE helpers -------------------
 
-// Segmenta la órbita en tramos para evitar líneas rectas por el antimeridiano o saltos grandes
-function segmentarOrbitaPorSaltos(positions, saltoMax = 30) {
-  let segmentos = [];
-  let segmentoActual = [];
-  for (let i = 0; i < positions.length; i++) {
-    const p = positions[i];
-    // Ignora puntos inválidos
-    if (!Array.isArray(p) || isNaN(p[0]) || isNaN(p[1])) continue;
-
-    if (i > 0) {
-      const [lat1, lon1] = positions[i-1];
-      const [lat2, lon2] = p;
-      // Corte si cambio de longitud o latitud es muy grande
-      if (Math.abs(lon2 - lon1) > 180 || Math.abs(lat2 - lat1) > saltoMax) {
-        if (segmentoActual.length > 1) segmentos.push(segmentoActual);
-        segmentoActual = [];
-      }
+function parsearTLEdeLinea(tleLinea) {
+    // Intenta separar por tabulación o dos o más espacios
+    let [l1, l2] = tleLinea.split('\t');
+    if (!l2) {
+        // Si no hay tabulación, intenta separar por dos o más espacios
+        const partes = tleLinea.split(/\s{2,}/);
+        if (partes.length >= 2) {
+            l1 = partes[0];
+            l2 = partes[1];
+        }
     }
-    segmentoActual.push(p);
-  }
-  if (segmentoActual.length > 1) segmentos.push(segmentoActual);
-  return segmentos;
+    if (l1 && l2) return [l1.trim(), l2.trim()];
+    return null;
 }
 
-// Ventana modal con mapa para la órbita y marcador de caída, optimizada
+function tleEpochToDate(epochStr) {
+    let year = parseInt(epochStr.slice(0,2),10);
+    year += (year < 57) ? 2000 : 1900;
+    const dayOfYear = parseFloat(epochStr.slice(2));
+    const date = new Date(Date.UTC(year, 0, 1, 0, 0, 0));
+    date.setUTCDate(date.getUTCDate() + Math.floor(dayOfYear) - 1);
+    const msInDay = 24*60*60*1000;
+    date.setTime(date.getTime() + Math.round(msInDay * (dayOfYear % 1)));
+    return date;
+}
+
+function segmentarOrbitaPorSaltos(positions, saltoMax = 30) {
+    let segmentos = [];
+    let segmentoActual = [];
+    for (let i = 0; i < positions.length; i++) {
+        const p = positions[i];
+        if (!Array.isArray(p) || isNaN(p[0]) || isNaN(p[1])) continue;
+        if (i > 0) {
+            const [lat1, lon1] = positions[i-1];
+            const [lat2, lon2] = p;
+            if (Math.abs(lon2 - lon1) > 180 || Math.abs(lat2 - lat1) > saltoMax) {
+                if (segmentoActual.length > 1) segmentos.push(segmentoActual);
+                segmentoActual = [];
+            }
+        }
+        segmentoActual.push(p);
+    }
+    if (segmentoActual.length > 1) segmentos.push(segmentoActual);
+    return segmentos;
+}
+
+// ------------------- Órbita modal -------------------
+
 function mostrarOrbitaParaDebris(debris) {
   // Abre el modal
   const modal = new bootstrap.Modal(document.getElementById('orbitaModal'));
@@ -256,46 +286,52 @@ function mostrarOrbitaParaDebris(debris) {
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(window.orbitaLeafletMap);
 
     let bounds = [];
-    // Calcula los puntos de la órbita usando satellite.js
+    // --- Dibuja la órbita usando satellite.js ---
     if (debris.tle) {
-      const tleLines = debris.tle.split('\n');
-      if (tleLines.length >= 2) {
-        const satrec = satellite.twoline2satrec(tleLines[0], tleLines[1]);
-        // Usar fecha base igual a la época del TLE
-        const epochStr = tleLines[0].substring(18, 32).replace(/\s+/g, '');
-        let now = tleEpochToDate(epochStr);
-        const positions = [];
-        // 100 puntos en torno a la época TLE
-        for (let i = 0; i <= 100; i++) {
-          // +/- 50 minutos desde la época
-          const time = new Date(now.getTime() + (i-50) * 60 * 1000);
-          const gmst = satellite.gstime(time);
-          const posVel = satellite.propagate(satrec, time);
-          if (posVel.position) {
-            const geo = satellite.eciToGeodetic(posVel.position, gmst);
-            const lat = satellite.degreesLat(geo.latitude);
-            let lon = satellite.degreesLong(geo.longitude);
-            // Normaliza -180/180 para mayor robustez
-            if (lon > 180) lon -= 360;
-            if (lon < -180) lon += 360;
-            // Evita NaN
-            if (!isNaN(lat) && !isNaN(lon)) {
-              positions.push([lat, lon]);
-            }
+      const tleLines = parsearTLEdeLinea(debris.tle);
+      if (tleLines) {
+        const [l1, l2] = tleLines;
+        try {
+          const satrec = satellite.twoline2satrec(l1, l2);
+          // Extrae la época TLE para propagar en torno a esa fecha
+          const epochStr = l1.substring(18, 32).replace(/\s+/g, '');
+          let now = tleEpochToDate(epochStr);
+          const positions = [];
+          // 100 puntos, +/- 50 minutos desde la época
+          for (let i = 0; i <= 100; i++) {
+              const time = new Date(now.getTime() + (i-50) * 60 * 1000);
+              const gmst = satellite.gstime(time);
+              const posVel = satellite.propagate(satrec, time);
+              if (posVel.position) {
+                  const geo = satellite.eciToGeodetic(posVel.position, gmst);
+                  const lat = satellite.degreesLat(geo.latitude);
+                  let lon = satellite.degreesLong(geo.longitude);
+                  if (lon > 180) lon -= 360;
+                  if (lon < -180) lon += 360;
+                  if (!isNaN(lat) && !isNaN(lon)) {
+                      positions.push([lat, lon]);
+                  }
+              }
           }
+          // Segmenta la órbita para evitar líneas rectas raras
+          const segmentos = segmentarOrbitaPorSaltos(positions, 30);
+          segmentos.forEach(seg => {
+              if (seg.length > 1) {
+                  L.polyline(seg, {
+                      color: 'orange',
+                      weight: 2,
+                      opacity: 0.85
+                  }).addTo(window.orbitaLeafletMap);
+                  bounds = bounds.concat(seg);
+              }
+          });
+        } catch (e) {
+          console.warn("Error procesando TLE:", debris.tle, e);
         }
-        // Segmenta la órbita para evitar líneas rectas cruzando el mapa o saltos
-        const segmentos = segmentarOrbitaPorSaltos(positions, 30);
-        segmentos.forEach(seg => {
-          if (seg.length > 1) {
-            L.polyline(seg, {color: 'orange', weight: 2}).addTo(window.orbitaLeafletMap);
-            bounds = bounds.concat(seg);
-          }
-        });
       }
     }
 
-    // Agrega el marcador de la posición de caída
+    // Agrega el marcador de la posición de caída si está disponible
     if (debris.lugar_caida && typeof debris.lugar_caida.lat === 'number' && typeof debris.lugar_caida.lon === 'number') {
       L.marker([debris.lugar_caida.lat, debris.lugar_caida.lon])
         .addTo(window.orbitaLeafletMap)
@@ -303,13 +339,14 @@ function mostrarOrbitaParaDebris(debris) {
         .openPopup();
       bounds.push([debris.lugar_caida.lat, debris.lugar_caida.lon]);
     }
-
     // Ajusta los límites del mapa si hay algo para mostrar
     if (bounds.length > 0) {
       window.orbitaLeafletMap.fitBounds(bounds, {padding: [30, 30]});
     }
   }, 300);
 }
+
+// ------------------- Init -------------------
 
 document.addEventListener("DOMContentLoaded", () => {
   initMapa();
