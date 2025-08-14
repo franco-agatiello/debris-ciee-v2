@@ -202,7 +202,27 @@ function listeners() {
   });
 }
 
-// Ventana modal con mapa para la órbita y marcador de caída
+// Segmenta la órbita en tramos para evitar líneas rectas por el antimeridiano
+function segmentarOrbitaPorAntimeridiano(positions) {
+  let segmentos = [];
+  let segmentoActual = [];
+  for (let i = 0; i < positions.length; i++) {
+    if (i > 0) {
+      const lon1 = positions[i-1][1];
+      const lon2 = positions[i][1];
+      if (Math.abs(lon2 - lon1) > 180) {
+        // Corte por antimeridiano, termina el segmento actual y empieza uno nuevo
+        segmentos.push(segmentoActual);
+        segmentoActual = [];
+      }
+    }
+    segmentoActual.push(positions[i]);
+  }
+  if (segmentoActual.length > 0) segmentos.push(segmentoActual);
+  return segmentos;
+}
+
+// Ventana modal con mapa para la órbita y marcador de caída, optimizada
 function mostrarOrbitaParaDebris(debris) {
   // Abre el modal
   const modal = new bootstrap.Modal(document.getElementById('orbitaModal'));
@@ -228,6 +248,7 @@ function mostrarOrbitaParaDebris(debris) {
         const satrec = satellite.twoline2satrec(tleLines[0], tleLines[1]);
         const now = new Date();
         const positions = [];
+        // Solo 100 puntos para eficiencia
         for (let i = 0; i <= 100; i++) {
           const time = new Date(now.getTime() - (100 - i) * 60 * 1000);
           const gmst = satellite.gstime(time);
@@ -235,14 +256,21 @@ function mostrarOrbitaParaDebris(debris) {
           if (posVel.position) {
             const geo = satellite.eciToGeodetic(posVel.position, gmst);
             const lat = satellite.degreesLat(geo.latitude);
-            const lon = satellite.degreesLong(geo.longitude);
+            let lon = satellite.degreesLong(geo.longitude);
+            // Normaliza -180/180 para mayor robustez
+            if (lon > 180) lon -= 360;
+            if (lon < -180) lon += 360;
             positions.push([lat, lon]);
           }
         }
-        if (positions.length > 1) {
-          L.polyline(positions, {color: 'orange', weight: 2}).addTo(window.orbitaLeafletMap);
-          bounds = bounds.concat(positions);
-        }
+        // Segmenta la órbita para evitar líneas rectas cruzando el mapa
+        const segmentos = segmentarOrbitaPorAntimeridiano(positions);
+        segmentos.forEach(seg => {
+          if (seg.length > 1) {
+            L.polyline(seg, {color: 'orange', weight: 2}).addTo(window.orbitaLeafletMap);
+            bounds = bounds.concat(seg);
+          }
+        });
       }
     }
 
