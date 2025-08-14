@@ -165,23 +165,27 @@ window.mostrarOrbita = function(index) {
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(mapaOrbita);
 
     const satrec = satellite.twoline2satrec(d.tle1, d.tle2);
+
+    // Calcula el periodo orbital en minutos usando el mean motion
+    // meanMotion = revoluciones por día (campos 7 de la línea 2 del TLE)
+    // satrec.no está en rad/min; convertimos a rev/día para mantener la fórmula estándar
+    const meanMotion = satrec.no * 1440 / (2 * Math.PI); // satrec.no en rad/min, 1440 min/día
+    const periodoMin = 1440 / meanMotion; // minutos para 1 vuelta
+
+    // Epoch date
     const jday = satrec.epochdays;
     const year = satrec.epochyr < 57 ? satrec.epochyr + 2000 : satrec.epochyr + 1900;
     const epochDate = new Date(Date.UTC(year, 0, 1, 0, 0, 0, 0) + (jday - 1) * 24 * 60 * 60 * 1000);
 
     let segments = [], segment = [], prevLon = null;
 
-    // Propaga 24 horas con paso de 2 minutos
-    for (let min = 0; min <= 1440; min += 2) {
+    // Simula sólo 1 vuelta, paso de 1 minuto
+    for (let min = 0; min <= periodoMin; min += 1) {
       const time = new Date(epochDate.getTime() + min * 60000);
       const gmst = satellite.gstime(time);
       const pos = satellite.propagate(satrec, time);
 
-      // VALIDACIÓN: pos puede ser null o no tener position
-      if (!pos || !pos.position) {
-        console.warn("Propagación falló para este instante:", time, d.nombre);
-        continue;
-      }
+      if (!pos || !pos.position) continue;
 
       const geo = satellite.eciToGeodetic(pos.position, gmst);
       let lat = satellite.degreesLat(geo.latitude);
@@ -189,16 +193,13 @@ window.mostrarOrbita = function(index) {
 
       if (isNaN(lat) || isNaN(lon) || Math.abs(lat) > 90) continue;
 
-      // Normaliza longitud entre -180 y 180
+      // Normaliza la longitud
       lon = ((lon + 180) % 360 + 360) % 360 - 180;
 
       if (prevLon !== null) {
         let delta = lon - prevLon;
-        if (delta > 180) lon -= 360;
-        else if (delta < -180) lon += 360;
-
-        // Salto grande detectado, cortar segmento
-        if (Math.abs(lon - prevLon) > 180) {
+        // Detecta salto de longitud y corta segmento
+        if (Math.abs(delta) > 180) {
           if (segment.length > 1) segments.push(segment);
           segment = [];
         }
@@ -207,25 +208,23 @@ window.mostrarOrbita = function(index) {
       segment.push([lat, lon]);
       prevLon = lon;
     }
-
     if (segment.length > 1) segments.push(segment);
 
-    // Dibuja cada segmento
+    // Dibuja la órbita (solo 1 vuelta)
     segments.forEach(seg => {
       L.polyline(seg, { color: "#3f51b5", weight: 2 }).addTo(mapaOrbita);
     });
 
-    // Marca punto de caída
+    // Punto de caída
     L.marker([d.lugar_caida.lat, d.lugar_caida.lon])
       .addTo(mapaOrbita)
       .bindPopup("Punto de caída")
       .openPopup();
 
-    // Ajusta vista a todos los segmentos
+    // Ajusta vista a la órbita
     if (segments.length && segments[0].length > 1) {
-      let bounds = segments[0].map(x => x);
-      for (let i = 1; i < segments.length; i++) bounds = bounds.concat(segments[i]);
-      mapaOrbita.fitBounds(bounds);
+      let bounds = segments.flat();
+      mapaOrbita.fitBounds(bounds, {padding: [20, 20]});
     } else {
       mapaOrbita.setView([d.lugar_caida.lat, d.lugar_caida.lon], 3);
     }
@@ -242,4 +241,3 @@ document.addEventListener("DOMContentLoaded", ()=>{
   listeners();
   cargarDatos();
 });
-
