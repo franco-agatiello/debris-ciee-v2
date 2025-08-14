@@ -155,64 +155,85 @@ function listeners(){
   document.getElementById("modo-calor").addEventListener("click",()=>{modo="calor"; actualizarMapa();});
 }
 
-window.mostrarOrbita = function(index){
+window.mostrarOrbita = function(index) {
   const d = filtrarDatos()[index];
-  if(!d.tle1 || !d.tle2) return alert("No hay TLE para este debris.");
+  if (!d.tle1 || !d.tle2) return alert("No hay TLE para este debris.");
 
-  if(mapaOrbita){ mapaOrbita.remove(); mapaOrbita=null; }
-  mapaOrbita = L.map('mapOrbita').setView([d.lugar_caida.lat,d.lugar_caida.lon], 3);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(mapaOrbita);
+  setTimeout(() => {
+    if (mapaOrbita) { mapaOrbita.remove(); mapaOrbita = null; }
+    mapaOrbita = L.map('mapOrbita').setView([d.lugar_caida.lat, d.lugar_caida.lon], 3);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(mapaOrbita);
 
-  const satrec = satellite.twoline2satrec(d.tle1,d.tle2);
+    const satrec = satellite.twoline2satrec(d.tle1, d.tle2);
+    const jday = satrec.epochdays;
+    const year = satrec.epochyr < 57 ? satrec.epochyr + 2000 : satrec.epochyr + 1900;
+    const epochDate = new Date(Date.UTC(year, 0, 1, 0, 0, 0, 0) + (jday - 1) * 24 * 60 * 60 * 1000);
 
-  // Calcula fecha de epoch
-  const jday = satrec.epochdays;
-  const year = satrec.epochyr < 57 ? satrec.epochyr + 2000 : satrec.epochyr + 1900;
-  const epochDate = new Date(Date.UTC(year,0,1,0,0,0,0) + (jday-1)*24*60*60*1000);
+    let segments = [], segment = [], prevLon = null;
 
-  // Calcular periodo orbital en minutos
-  const periodo_min = 2 * Math.PI / satrec.no; // satrec.no está en rad/min
+    // Propaga 24 horas con paso de 2 minutos
+    for (let min = 0; min <= 1440; min += 2) {
+      const time = new Date(epochDate.getTime() + min * 60000);
+      const gmst = satellite.gstime(time);
+      const pos = satellite.propagate(satrec, time);
 
-  // Simula la órbita en pasos de 1 minuto
-  let segments = [], segment = [], prevLon = null;
-  for(let min=0; min<=periodo_min; min+=1){
-    const time = new Date(epochDate.getTime() + min*60000);
-    const gmst = satellite.gstime(time);
-    const pos = satellite.propagate(satrec,time);
-    if(!pos.position) continue;
-
-    const geo = satellite.eciToGeodetic(pos.position, gmst);
-    let lat = satellite.degreesLat(geo.latitude);
-    let lon = satellite.degreesLong(geo.longitude);
-
-    if(isNaN(lat) || isNaN(lon) || Math.abs(lat) > 90) continue;
-
-    // Normalizar longitud
-    lon = ((lon + 180) % 360 + 360) % 360 - 180;
-
-    if(prevLon !== null){
-      let delta = lon - prevLon;
-      if(delta > 180) lon -= 360;
-      else if(delta < -180) lon += 360;
-
-      if(Math.abs(lon - prevLon) > 180){
-        if(segment.length>1) segments.push(segment);
-        segment = [];
+      // VALIDACIÓN: pos puede ser null o no tener position
+      if (!pos || !pos.position) {
+        console.warn("Propagación falló para este instante:", time, d.nombre);
+        continue;
       }
+
+      const geo = satellite.eciToGeodetic(pos.position, gmst);
+      let lat = satellite.degreesLat(geo.latitude);
+      let lon = satellite.degreesLong(geo.longitude);
+
+      if (isNaN(lat) || isNaN(lon) || Math.abs(lat) > 90) continue;
+
+      // Normaliza longitud entre -180 y 180
+      lon = ((lon + 180) % 360 + 360) % 360 - 180;
+
+      if (prevLon !== null) {
+        let delta = lon - prevLon;
+        if (delta > 180) lon -= 360;
+        else if (delta < -180) lon += 360;
+
+        // Salto grande detectado, cortar segmento
+        if (Math.abs(lon - prevLon) > 180) {
+          if (segment.length > 1) segments.push(segment);
+          segment = [];
+        }
+      }
+
+      segment.push([lat, lon]);
+      prevLon = lon;
     }
 
-    segment.push([lat, lon]);
-    prevLon = lon;
-  }
-  if(segment.length>1) segments.push(segment);
+    if (segment.length > 1) segments.push(segment);
 
-  // Dibujar segmentos
-  segments.forEach(seg => L.polyline(seg, {color:'blue',weight:2}).addTo(mapaOrbita));
+    // Dibuja cada segmento
+    segments.forEach(seg => {
+      L.polyline(seg, { color: "#3f51b5", weight: 2 }).addTo(mapaOrbita);
+    });
 
-  // Marcador de caída
-  L.marker([d.lugar_caida.lat,d.lugar_caida.lon], {icon: iconoAzul}).addTo(mapaOrbita)
-    .bindPopup("Punto de caída").openPopup();
-}
+    // Marca punto de caída
+    L.marker([d.lugar_caida.lat, d.lugar_caida.lon])
+      .addTo(mapaOrbita)
+      .bindPopup("Punto de caída")
+      .openPopup();
+
+    // Ajusta vista a todos los segmentos
+    if (segments.length && segments[0].length > 1) {
+      let bounds = segments[0].map(x => x);
+      for (let i = 1; i < segments.length; i++) bounds = bounds.concat(segments[i]);
+      mapaOrbita.fitBounds(bounds);
+    } else {
+      mapaOrbita.setView([d.lugar_caida.lat, d.lugar_caida.lon], 3);
+    }
+  }, 300);
+
+  const modal = new bootstrap.Modal(document.getElementById('modalOrbita'));
+  modal.show();
+};
 
 
 // Inicialización
