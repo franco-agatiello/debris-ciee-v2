@@ -202,7 +202,7 @@ function listeners() {
   });
 }
 
-// Ventana modal con mapa para la órbita
+// Ventana modal con mapa para la órbita y marcador de caída
 function mostrarOrbitaParaDebris(debris) {
   // Abre el modal
   const modal = new bootstrap.Modal(document.getElementById('orbitaModal'));
@@ -220,6 +220,7 @@ function mostrarOrbitaParaDebris(debris) {
     window.orbitaLeafletMap = L.map('orbita-map').setView([0, 0], 2);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(window.orbitaLeafletMap);
 
+    let bounds = [];
     // Calcula los puntos de la órbita usando satellite.js
     if (debris.tle) {
       const tleLines = debris.tle.split('\n');
@@ -240,11 +241,25 @@ function mostrarOrbitaParaDebris(debris) {
         }
         if (positions.length > 1) {
           L.polyline(positions, {color: 'orange', weight: 2}).addTo(window.orbitaLeafletMap);
-          window.orbitaLeafletMap.fitBounds(positions);
+          bounds = bounds.concat(positions);
         }
       }
     }
-  }, 300); // Da tiempo al modal para mostrarse y el div esté visible
+
+    // Agrega el marcador de la posición de caída
+    if (debris.lugar_caida && typeof debris.lugar_caida.lat === 'number' && typeof debris.lugar_caida.lon === 'number') {
+      L.marker([debris.lugar_caida.lat, debris.lugar_caida.lon])
+        .addTo(window.orbitaLeafletMap)
+        .bindPopup(`Posición de caída de<br><strong>${debris.nombre}</strong>`)
+        .openPopup();
+      bounds.push([debris.lugar_caida.lat, debris.lugar_caida.lon]);
+    }
+
+    // Ajusta los límites del mapa si hay algo para mostrar
+    if (bounds.length > 0) {
+      window.orbitaLeafletMap.fitBounds(bounds, {padding: [30, 30]});
+    }
+  }, 300);
 }
 
 document.addEventListener("DOMContentLoaded", () => {
