@@ -210,15 +210,23 @@ window.mostrarOrbita = function(index) {
 
     // Calcular puntos de la órbita usando satellite.js
     const satrec = satellite.twoline2satrec(d.tle1, d.tle2);
-    const now = new Date(d.fecha + "T00:00:00Z");
+
+    // Obtener la época del TLE en fecha JS
+    const jday = satrec.epochdays;
+    const year = satrec.epochyr < 57 ? satrec.epochyr + 2000 : satrec.epochyr + 1900;
+    const epochDate = new Date(Date.UTC(year, 0, 1, 0, 0, 0, 0) + (jday - 1) * 24 * 60 * 60 * 1000);
+
     let positions = [];
-    for (let m = -90; m <= 0; m += 2) { // 3 horas antes hasta caída
-      const time = new Date(now.getTime() + m*60*1000);
+    for (let m = -90; m <= 90; m += 2) {
+      const time = new Date(epochDate.getTime() + m*60*1000);
       const gmst = satellite.gstime(time);
       const pos = satellite.propagate(satrec, time);
       if (pos.position) {
         const geo = satellite.eciToGeodetic(pos.position, gmst);
-        positions.push([satellite.degreesLat(geo.latitude), satellite.degreesLong(geo.longitude)]);
+        const lat = satellite.degreesLat(geo.latitude);
+        const lon = satellite.degreesLong(geo.longitude);
+        if (isNaN(lat) || isNaN(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) continue;
+        positions.push([lat, lon]);
       }
     }
 
@@ -230,7 +238,11 @@ window.mostrarOrbita = function(index) {
       .bindPopup("Punto de caída")
       .openPopup();
 
-    mapaOrbita.fitBounds(positions);
+    if (positions.length > 1) {
+      mapaOrbita.fitBounds(positions);
+    } else {
+      mapaOrbita.setView([d.lugar_caida.lat, d.lugar_caida.lon], 3);
+    }
   }, 300);
 
   const modal = new bootstrap.Modal(document.getElementById('modalOrbita'));
