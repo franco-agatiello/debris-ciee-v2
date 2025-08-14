@@ -181,14 +181,12 @@ main[style] {
   margin-bottom: 4px;
   display: block;
 }
-
 .leaflet-popup-content img {
   box-shadow: 0 2px 12px rgba(44,62,80,0.10);
   border-radius: 8px;
   margin-top: 4px;
   max-width: 220px;
 }
-
 .leaflet-bottom.leaflet-right .info.legend {
   margin-right: 20px !important;
   margin-bottom: 20px !important;
@@ -198,9 +196,3 @@ main[style] {
   max-height: 220px;
   overflow-y: auto;
 }
-
-/*
-* {
-  outline: 1px solid red !important;
-}
-*/
