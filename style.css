@@ -163,6 +163,7 @@ main[style] {
   }
 }
 
+/* Leyenda */
 .info.legend {
   background: #fff;
   opacity: 1;
@@ -182,6 +183,7 @@ main[style] {
   display: block;
 }
 
+/* Custom para imágenes popup */
 .leaflet-popup-content img {
   box-shadow: 0 2px 12px rgba(44,62,80,0.10);
   border-radius: 8px;
@@ -194,8 +196,14 @@ main[style] {
   margin-bottom: 20px !important;
 }
 
-/* Modal de órbita */
+/* Mejorar el dropdown de países */
+#dropdownPaisMenu {
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+/* Estilo mínimo para el mapa del modal de órbita */
 #orbita-map {
-  border-radius: 8px;
-  border: 1px solid #dde1e7;
+  min-height: 320px;
+  width: 100%;
 }
