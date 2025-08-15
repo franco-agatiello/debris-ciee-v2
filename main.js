@@ -274,7 +274,7 @@ window.mostrarOrbitaPlanta = function(index) {
 
     // Dibuja la Tierra en el foco como imagen PNG
     const img = new Image();
-    img.src = 'https://upload.wikimedia.org/wikipedia/commons/9/97/The_Earth_seen_from_Apollo_17.jpg'; // Cambia si tienes una local
+    img.src = 'img/earth.png';  // Cambia si tienes una local
     img.onload = function() {
       const earthRadiusPx = radioTierra * escala;
       ctx.save();
