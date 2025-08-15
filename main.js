@@ -1,11 +1,10 @@
 let debris = [];
 let mapa, capaPuntos, capaCalor, modo = "puntos";
 let leyendaPuntos, leyendaCalor;
-let mapaOrbita = null;
+let mapaTrayectoria = null;
 
 const radioTierra = 6371; // km
 
-// Iconos personalizados por rango de año
 const iconoAzul = L.icon({iconUrl:'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png',iconSize:[18,29],iconAnchor:[9,29],popupAnchor:[1,-30]});
 const iconoVerde = L.icon({iconUrl:'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png',iconSize:[18,29],iconAnchor:[9,29],popupAnchor:[1,-30]});
 const iconoRojo = L.icon({iconUrl:'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',iconSize:[18,29],iconAnchor:[9,29],popupAnchor:[1,-30]});
@@ -78,8 +77,8 @@ function popupContenidoDebris(d,index){
   if(d.fecha) contenido += `Fecha: ${d.fecha}<br>`;
   if(d.imagen) contenido += `<img src="${d.imagen}" alt="${d.nombre}"><br>`;
   if(d.tle1 && d.tle2) {
-    contenido += `<button class="btn btn-sm btn-info mt-2" onclick="mostrarOrbita(${index})">Ver órbita</button>`;
-    contenido += `<button class="btn btn-sm btn-warning mt-2 ms-1" onclick="mostrarOrbitaPlanta(${index})">Vista en planta</button>`;
+    contenido += `<button class="btn btn-sm btn-info mt-2" onclick="mostrarTrayectoria(${index})">Ver trayectoria</button>`;
+    contenido += `<button class="btn btn-sm btn-warning mt-2 ms-1" onclick="mostrarOrbitaPlanta(${index})">Ver órbita</button>`;
   }
   return contenido;
 }
@@ -160,14 +159,14 @@ function listeners(){
   document.getElementById("modo-calor").addEventListener("click",()=>{modo="calor"; actualizarMapa();});
 }
 
-window.mostrarOrbita = function(index) {
+window.mostrarTrayectoria = function(index) {
   const d = filtrarDatos()[index];
   if (!d.tle1 || !d.tle2) return alert("No hay TLE para este debris.");
 
   setTimeout(() => {
-    if (mapaOrbita) { mapaOrbita.remove(); mapaOrbita = null; }
-    mapaOrbita = L.map('mapOrbita').setView([d.lugar_caida.lat, d.lugar_caida.lon], 3);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(mapaOrbita);
+    if (mapaTrayectoria) { mapaTrayectoria.remove(); mapaTrayectoria = null; }
+    mapaTrayectoria = L.map('mapTrayectoria').setView([d.lugar_caida.lat, d.lugar_caida.lon], 3);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(mapaTrayectoria);
 
     const satrec = satellite.twoline2satrec(d.tle1, d.tle2);
 
@@ -210,27 +209,26 @@ window.mostrarOrbita = function(index) {
     if (segment.length > 1) segments.push(segment);
 
     segments.forEach(seg => {
-      L.polyline(seg, { color: "#3f51b5", weight: 2 }).addTo(mapaOrbita);
+      L.polyline(seg, { color: "#3f51b5", weight: 2 }).addTo(mapaTrayectoria);
     });
 
     L.marker([d.lugar_caida.lat, d.lugar_caida.lon])
-      .addTo(mapaOrbita)
+      .addTo(mapaTrayectoria)
       .bindPopup("Punto de caída")
       .openPopup();
 
     if (segments.length && segments[0].length > 1) {
       let bounds = segments.flat();
-      mapaOrbita.fitBounds(bounds, {padding: [20, 20]});
+      mapaTrayectoria.fitBounds(bounds, {padding: [20, 20]});
     } else {
-      mapaOrbita.setView([d.lugar_caida.lat, d.lugar_caida.lon], 3);
+      mapaTrayectoria.setView([d.lugar_caida.lat, d.lugar_caida.lon], 3);
     }
   }, 300);
 
-  const modal = new bootstrap.Modal(document.getElementById('modalOrbita'));
+  const modal = new bootstrap.Modal(document.getElementById('modalTrayectoria'));
   modal.show();
 };
 
-// Vista en planta con escala dinámica y la Tierra como imagen PNG y tooltips en los puntos rojos
 window.mostrarOrbitaPlanta = function(index) {
   const d = filtrarDatos()[index];
   if (!d.tle1 || !d.tle2) return alert("No hay TLE para este debris.");
@@ -257,7 +255,6 @@ window.mostrarOrbitaPlanta = function(index) {
   const ctx = canvas.getContext('2d');
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // Dibuja la órbita elíptica con la Tierra en el foco y escala dinámica ajustada
   if (a && excentricidad !== null) {
     const margen_canvas = 30;
     const c = a * excentricidad;
@@ -275,18 +272,14 @@ window.mostrarOrbitaPlanta = function(index) {
     const yc = canvas.height / 2;
     const focoX = xc + c * escala;
 
-    // El fondo del canvas ahora lo da el CSS
-
-    // Órbita (elipse)
     ctx.beginPath();
     ctx.ellipse(xc, yc, a * escala, b * escala, 0, 0, 2*Math.PI);
     ctx.strokeStyle = "#ff9900";
     ctx.lineWidth = 3;
     ctx.stroke();
 
-    // Dibuja la Tierra en el foco como imagen PNG
     const img = new Image();
-    img.src = 'img/earth.png'; // Usa tu ruta local, o una URL pública si prefieres
+    img.src = 'img/earth.png';
     img.onload = function() {
       const earthRadiusPx = radioTierra * escala;
       ctx.save();
@@ -297,25 +290,22 @@ window.mostrarOrbitaPlanta = function(index) {
       ctx.drawImage(img, focoX - earthRadiusPx, yc - earthRadiusPx, earthRadiusPx * 2, earthRadiusPx * 2);
       ctx.restore();
 
-      // Marca perigeo (más cerca del foco)
       ctx.fillStyle = "#ff0000";
       ctx.beginPath();
       ctx.arc(focoX + (a - c) * escala, yc, 5, 0, 2*Math.PI);
       ctx.fill();
 
-      // Marca apogeo (más lejos del foco)
       ctx.beginPath();
       ctx.arc(focoX - (a + c) * escala, yc, 5, 0, 2*Math.PI);
       ctx.fill();
 
-      // Tooltip en los puntos rojos
       canvas.onmousemove = function(e) {
         const rect = canvas.getBoundingClientRect();
         const mx = e.clientX - rect.left;
         const my = e.clientY - rect.top;
         const perigeoX = focoX + (a - c) * escala;
         const apogeoX = focoX - (a + c) * escala;
-        const r = 9; // radio de detección para el tooltip
+        const r = 9;
         let msg = '';
         if (Math.hypot(mx - perigeoX, my - yc) < r) msg = 'Perigeo';
         else if (Math.hypot(mx - apogeoX, my - yc) < r) msg = 'Apogeo';
