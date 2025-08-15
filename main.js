@@ -230,7 +230,7 @@ window.mostrarOrbita = function(index) {
   modal.show();
 };
 
-// Vista en planta con escala dinámica y la Tierra como imagen PNG
+// Vista en planta con escala dinámica y la Tierra como imagen PNG y tooltips en los puntos rojos
 window.mostrarOrbitaPlanta = function(index) {
   const d = filtrarDatos()[index];
   if (!d.tle1 || !d.tle2) return alert("No hay TLE para este debris.");
@@ -275,6 +275,8 @@ window.mostrarOrbitaPlanta = function(index) {
     const yc = canvas.height / 2;
     const focoX = xc + c * escala;
 
+    // El fondo del canvas ahora lo da el CSS
+
     // Órbita (elipse)
     ctx.beginPath();
     ctx.ellipse(xc, yc, a * escala, b * escala, 0, 0, 2*Math.PI);
@@ -295,16 +297,31 @@ window.mostrarOrbitaPlanta = function(index) {
       ctx.drawImage(img, focoX - earthRadiusPx, yc - earthRadiusPx, earthRadiusPx * 2, earthRadiusPx * 2);
       ctx.restore();
 
-      // Marca apogeo y perigeo respecto al foco
+      // Marca perigeo (más cerca del foco)
       ctx.fillStyle = "#ff0000";
-      // Perigeo (más cerca del foco)
       ctx.beginPath();
       ctx.arc(focoX + (a - c) * escala, yc, 5, 0, 2*Math.PI);
       ctx.fill();
-      // Apogeo (más lejos del foco)
+
+      // Marca apogeo (más lejos del foco)
       ctx.beginPath();
       ctx.arc(focoX - (a + c) * escala, yc, 5, 0, 2*Math.PI);
       ctx.fill();
+
+      // Tooltip en los puntos rojos
+      canvas.onmousemove = function(e) {
+        const rect = canvas.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+        const perigeoX = focoX + (a - c) * escala;
+        const apogeoX = focoX - (a + c) * escala;
+        const r = 9; // radio de detección para el tooltip
+        let msg = '';
+        if (Math.hypot(mx - perigeoX, my - yc) < r) msg = 'Perigeo';
+        else if (Math.hypot(mx - apogeoX, my - yc) < r) msg = 'Apogeo';
+        else msg = '';
+        canvas.title = msg;
+      };
     };
   }
 
