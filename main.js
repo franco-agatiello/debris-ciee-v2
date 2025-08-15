@@ -3,6 +3,8 @@ let mapa, capaPuntos, capaCalor, modo = "puntos";
 let leyendaPuntos, leyendaCalor;
 let mapaOrbita = null;
 
+const radioTierra = 6371; // km
+
 // Iconos personalizados por rango de año
 const iconoAzul = L.icon({iconUrl:'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png',iconSize:[18,29],iconAnchor:[9,29],popupAnchor:[1,-30]});
 const iconoVerde = L.icon({iconUrl:'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png',iconSize:[18,29],iconAnchor:[9,29],popupAnchor:[1,-30]});
@@ -169,25 +171,17 @@ window.mostrarOrbita = function(index) {
 
     const satrec = satellite.twoline2satrec(d.tle1, d.tle2);
 
-    // Calcula el periodo orbital en minutos usando el mean motion
     const meanMotion = satrec.no * 1440 / (2 * Math.PI); // satrec.no en rad/min
     const periodoMin = 1440 / meanMotion;
-
-    // Cuántas vueltas querés mostrar (3 o 4)
     const vueltas = 4;
     const minutosATrazar = periodoMin * vueltas;
 
-    // Epoch date
     const jday = satrec.epochdays;
     const year = satrec.epochyr < 57 ? satrec.epochyr + 2000 : satrec.epochyr + 1900;
     const epochDate = new Date(Date.UTC(year, 0, 1, 0, 0, 0, 0) + (jday - 1) * 24 * 60 * 60 * 1000);
 
-    // Opcional: ¿Querés que las vueltas sean "alrededor del punto de caída"? Si sí, buscá el tiempo más cercano a ese punto.
-    // Por ahora, se traza desde el epoch del TLE.
-
     let segments = [], segment = [], prevLon = null;
 
-    // Simula las vueltas, paso de 1 minuto
     for (let min = 0; min <= minutosATrazar; min += 1) {
       const time = new Date(epochDate.getTime() + min * 60000);
       const gmst = satellite.gstime(time);
@@ -201,35 +195,29 @@ window.mostrarOrbita = function(index) {
 
       if (isNaN(lat) || isNaN(lon) || Math.abs(lat) > 90) continue;
 
-      // Normaliza la longitud
       lon = ((lon + 180) % 360 + 360) % 360 - 180;
 
       if (prevLon !== null) {
         let delta = Math.abs(lon - prevLon);
-        // Si el salto de longitud es grande (cruce de ±180°), corta el segmento
-        if (delta > 30) { // Si ves cortes feos, podés bajar a 20
+        if (delta > 30) {
           if (segment.length > 1) segments.push(segment);
           segment = [];
         }
       }
-
       segment.push([lat, lon]);
       prevLon = lon;
     }
     if (segment.length > 1) segments.push(segment);
 
-    // Dibuja la órbita (3-4 vueltas)
     segments.forEach(seg => {
       L.polyline(seg, { color: "#3f51b5", weight: 2 }).addTo(mapaOrbita);
     });
 
-    // Punto de caída
     L.marker([d.lugar_caida.lat, d.lugar_caida.lon])
       .addTo(mapaOrbita)
       .bindPopup("Punto de caída")
       .openPopup();
 
-    // Ajusta vista a la órbita
     if (segments.length && segments[0].length > 1) {
       let bounds = segments.flat();
       mapaOrbita.fitBounds(bounds, {padding: [20, 20]});
@@ -242,27 +230,22 @@ window.mostrarOrbita = function(index) {
   modal.show();
 };
 
-// --- NUEVA FUNCIÓN: VISTA EN PLANTA DE LA ÓRBITA ---
+// Vista en planta con imagen de la Tierra, apogeo y perigeo respecto al foco
 window.mostrarOrbitaPlanta = function(index) {
   const d = filtrarDatos()[index];
   if (!d.tle1 || !d.tle2) return alert("No hay TLE para este debris.");
 
-  // Parámetros orbitales
-  const a = d.a ?? null; // semi eje mayor [km]
-  const apogeo = d.apogeo ?? null; // [km]
-  const perigeo = d.perigeo ?? null; // [km]
+  const a = d.a ?? null;
+  const apogeo = d.apogeo ?? null;
+  const perigeo = d.perigeo ?? null;
   let excentricidad = null;
 
-  // Si no viene excentricidad, la calculamos:
   if (a && apogeo !== null && perigeo !== null) {
-    // apogeo = a*(1+e) - RT , perigeo = a*(1-e) - RT , RT = radio tierra
-    // e = (apogeo - perigeo)/(apogeo + perigeo + 2*RT)
-    excentricidad = (apogeo - perigeo) / (apogeo + perigeo + 2*6371);
+    excentricidad = (apogeo - perigeo) / (apogeo + perigeo + 2*radioTierra);
   } else {
     excentricidad = null;
   }
 
-  // Muestra los datos
   let infoHTML = `<strong>Parámetros orbitales:</strong><br>`;
   if (a) infoHTML += `Semi eje mayor (a): <b>${a.toFixed(2)}</b> km<br>`;
   if (apogeo) infoHTML += `Apogeo: <b>${apogeo.toFixed(2)}</b> km<br>`;
@@ -270,62 +253,55 @@ window.mostrarOrbitaPlanta = function(index) {
   if (excentricidad !== null) infoHTML += `Excentricidad: <b>${excentricidad.toFixed(4)}</b><br>`;
   document.getElementById('orbitaPlantaInfo').innerHTML = infoHTML;
 
-  // Dibuja la órbita en planta (canvas)
   const canvas = document.getElementById('canvasPlanta');
   const ctx = canvas.getContext('2d');
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // Dibujar la Tierra
-  const xc = canvas.width/2, yc = canvas.height/2;
-  const radioTierra = 6371; // km
-  let escala = 1;
-  if (a) escala = 120 / a; // escalamos para que se vea bien
-
-  // Tierra
-  ctx.beginPath();
-  ctx.arc(xc, yc, radioTierra * escala, 0, 2*Math.PI, false);
-  ctx.fillStyle = "#0099cc";
-  ctx.globalAlpha = 0.3;
-  ctx.fill();
-  ctx.globalAlpha = 1;
-  ctx.strokeStyle = "#0099cc";
-  ctx.lineWidth = 2;
-  ctx.stroke();
-
-  // Órbita (elipse)
+  // Dibuja la órbita elíptica con la Tierra en el foco
   if (a && excentricidad !== null) {
-    const b = a * Math.sqrt(1 - excentricidad*excentricidad); // semi eje menor
+    const c = a * excentricidad;
+    const xc = canvas.width/2, yc = canvas.height/2;
+    let escala = 120 / (a + apogeo); // se ajusta para mostrar bien en canvas
+    const focoX = xc + c * escala;
+
+    // Órbita (elipse)
+    const b = a * Math.sqrt(1 - excentricidad*excentricidad);
     ctx.beginPath();
-    ctx.ellipse(
-      xc,
-      yc,
-      a * escala,
-      b * escala,
-      0,
-      0,
-      2*Math.PI
-    );
+    ctx.ellipse(xc, yc, a * escala, b * escala, 0, 0, 2*Math.PI);
     ctx.strokeStyle = "#ff9900";
     ctx.lineWidth = 3;
     ctx.stroke();
 
-    // Marca apogeo y perigeo
-    ctx.fillStyle = "#ff0000";
-    ctx.beginPath();
-    ctx.arc(xc + (a - (a*excentricidad)) * escala, yc, 5, 0, 2*Math.PI);
-    ctx.fill(); // perigeo
-    ctx.beginPath();
-    ctx.arc(xc - (a - (a*excentricidad)) * escala, yc, 5, 0, 2*Math.PI);
-    ctx.fill(); // apogeo
+    // Dibuja la Tierra en el foco como imagen PNG
+    const img = new Image();
+    img.src = 'https://upload.wikimedia.org/wikipedia/commons/9/97/The_Earth_seen_from_Apollo_17.jpg'; // Cambia si tienes una local
+    img.onload = function() {
+      const earthRadiusPx = radioTierra * escala;
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(focoX, yc, earthRadiusPx, 0, 2*Math.PI);
+      ctx.closePath();
+      ctx.clip();
+      ctx.drawImage(img, focoX - earthRadiusPx, yc - earthRadiusPx, earthRadiusPx * 2, earthRadiusPx * 2);
+      ctx.restore();
+
+      // Marca apogeo y perigeo respecto al foco
+      ctx.fillStyle = "#ff0000";
+      // Perigeo (más cerca del foco)
+      ctx.beginPath();
+      ctx.arc(focoX + (a - c) * escala, yc, 5, 0, 2*Math.PI);
+      ctx.fill();
+      // Apogeo (más lejos del foco)
+      ctx.beginPath();
+      ctx.arc(focoX - (a + c) * escala, yc, 5, 0, 2*Math.PI);
+      ctx.fill();
+    };
   }
 
-  // Abre el modal
   const modal = new bootstrap.Modal(document.getElementById('modalOrbitaPlanta'));
   modal.show();
 };
 
-
-// Inicialización
 document.addEventListener("DOMContentLoaded", ()=>{
   initMapa();
   listeners();
