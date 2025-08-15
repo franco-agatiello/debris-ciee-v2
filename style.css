@@ -163,7 +163,6 @@ main[style] {
   }
 }
 
-/* Leyenda de puntos y densidad */
 .info.legend {
   background: #fff;
   opacity: 1;
@@ -197,7 +196,6 @@ main[style] {
   overflow-y: auto;
 }
 
-/* Cambiado: el nombre del canvas y su título para "Órbita" */
 #canvasPlanta {
   background: #000010 !important;
   border-radius: 12px;
@@ -205,7 +203,6 @@ main[style] {
   margin: 0 auto;
 }
 
-/* Modales: Trayectoria y Órbita (nuevo nombre) */
 #modalTrayectoria .modal-title {
   font-size: 1.2rem;
   font-weight: 600;
@@ -217,14 +214,12 @@ main[style] {
   color: #ff9900;
 }
 
-/* Info de parámetros orbitales */
 #orbitaPlantaInfo {
   font-size: 0.92rem;
   margin-bottom: 6px;
   color: #e1e1e1;
 }
 
-/* Botones del popup en el mapa para Trayectoria y Órbita */
 .leaflet-popup-content .btn-info {
   background: #3f51b5;
   border: none;
