@@ -78,8 +78,8 @@ function popupContenidoDebris(d,index){
   if(d.fecha) contenido += `Fecha: ${d.fecha}<br>`;
   if(d.imagen) contenido += `<img src="${d.imagen}" alt="${d.nombre}"><br>`;
   if(d.tle1 && d.tle2) {
-    contenido += `<button class="btn btn-sm btn-info mt-2" onclick="mostrarOrbita(${index})">Ver órbita</button>`;
-    contenido += `<button class="btn btn-sm btn-warning mt-2 ms-1" onclick="mostrarOrbitaPlanta(${index})">Vista en planta</button>`;
+    contenido += `<button class="btn btn-sm btn-info mt-2" onclick="mostrarOrbita(${index})">Ver trayectoria</button>`;
+    contenido += `<button class="btn btn-sm btn-warning mt-2 ms-1" onclick="mostrarOrbitaPlanta(${index})">Ver órbita</button>`;
   }
   return contenido;
 }
@@ -164,6 +164,9 @@ window.mostrarOrbita = function(index) {
   const d = filtrarDatos()[index];
   if (!d.tle1 || !d.tle2) return alert("No hay TLE para este debris.");
 
+  // Set debris name in modal
+  document.getElementById('nombreDebrisTrayectoria').textContent = d.nombre ?? 'Objeto desconocido';
+
   setTimeout(() => {
     if (mapaOrbita) { mapaOrbita.remove(); mapaOrbita = null; }
     mapaOrbita = L.map('mapOrbita').setView([d.lugar_caida.lat, d.lugar_caida.lon], 3);
@@ -226,7 +229,7 @@ window.mostrarOrbita = function(index) {
     }
   }, 300);
 
-  const modal = new bootstrap.Modal(document.getElementById('modalOrbita'));
+  const modal = new bootstrap.Modal(document.getElementById('modalTrayectoria'));
   modal.show();
 };
 
@@ -234,6 +237,9 @@ window.mostrarOrbita = function(index) {
 window.mostrarOrbitaPlanta = function(index) {
   const d = filtrarDatos()[index];
   if (!d.tle1 || !d.tle2) return alert("No hay TLE para este debris.");
+
+  // Set debris name in modal
+  document.getElementById('nombreDebrisPlanta').textContent = d.nombre ?? 'Objeto desconocido';
 
   const a = d.a ?? null;
   const apogeo = d.apogeo ?? null;
@@ -246,11 +252,12 @@ window.mostrarOrbitaPlanta = function(index) {
     excentricidad = null;
   }
 
-  let infoHTML = `<strong>Parámetros orbitales:</strong><br>`;
-  if (a) infoHTML += `Semi eje mayor (a): <b>${a.toFixed(2)}</b> km<br>`;
-  if (apogeo) infoHTML += `Apogeo: <b>${apogeo.toFixed(2)}</b> km<br>`;
-  if (perigeo) infoHTML += `Perigeo: <b>${perigeo.toFixed(2)}</b> km<br>`;
-  if (excentricidad !== null) infoHTML += `Excentricidad: <b>${excentricidad.toFixed(4)}</b><br>`;
+  let infoHTML = `<h6>Parámetros orbitales</h6><ul>`;
+  if (a) infoHTML += `<li>Semi eje mayor (a): <b>${a.toFixed(2)}</b> km</li>`;
+  if (apogeo) infoHTML += `<li>Apogeo: <b>${apogeo.toFixed(2)}</b> km</li>`;
+  if (perigeo) infoHTML += `<li>Perigeo: <b>${perigeo.toFixed(2)}</b> km</li>`;
+  if (excentricidad !== null) infoHTML += `<li>Excentricidad: <b>${excentricidad.toFixed(4)}</b></li>`;
+  infoHTML += `</ul>`;
   document.getElementById('orbitaPlantaInfo').innerHTML = infoHTML;
 
   const canvas = document.getElementById('canvasPlanta');
@@ -308,19 +315,41 @@ window.mostrarOrbitaPlanta = function(index) {
       ctx.arc(focoX - (a + c) * escala, yc, 5, 0, 2*Math.PI);
       ctx.fill();
 
-      // Tooltip en los puntos rojos
+      // Indicador visual con texto cerca de los puntos
+      ctx.font = 'bold 14px Inter, Arial';
+      ctx.fillStyle = "#ff0000";
+      ctx.textAlign = "left";
+      ctx.fillText("Perigeo", focoX + (a - c) * escala + 8, yc - 8);
+      ctx.textAlign = "right";
+      ctx.fillText("Apogeo", focoX - (a + c) * escala - 8, yc - 8);
+
+      // Tooltip HTML flotante
+      const tooltip = document.getElementById('tooltipPlanta');
       canvas.onmousemove = function(e) {
         const rect = canvas.getBoundingClientRect();
         const mx = e.clientX - rect.left;
         const my = e.clientY - rect.top;
         const perigeoX = focoX + (a - c) * escala;
         const apogeoX = focoX - (a + c) * escala;
-        const r = 9; // radio de detección para el tooltip
+        const r = 12; // radio de detección para el tooltip
+
         let msg = '';
         if (Math.hypot(mx - perigeoX, my - yc) < r) msg = 'Perigeo';
         else if (Math.hypot(mx - apogeoX, my - yc) < r) msg = 'Apogeo';
-        else msg = '';
-        canvas.title = msg;
+
+        if (msg) {
+          tooltip.style.display = 'block';
+          tooltip.textContent = msg;
+          tooltip.style.left = (mx + 18) + 'px';
+          tooltip.style.top = (my - 12) + 'px';
+        } else {
+          tooltip.style.display = 'none';
+        }
+      };
+
+      canvas.onmouseleave = function() {
+        const tooltip = document.getElementById('tooltipPlanta');
+        tooltip.style.display = 'none';
       };
     };
   }
