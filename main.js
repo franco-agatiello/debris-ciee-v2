@@ -230,7 +230,7 @@ window.mostrarOrbita = function(index) {
   modal.show();
 };
 
-// Vista en planta con imagen de la Tierra, apogeo y perigeo respecto al foco
+// Vista en planta con escala dinámica y la Tierra como imagen PNG
 window.mostrarOrbitaPlanta = function(index) {
   const d = filtrarDatos()[index];
   if (!d.tle1 || !d.tle2) return alert("No hay TLE para este debris.");
@@ -257,11 +257,15 @@ window.mostrarOrbitaPlanta = function(index) {
   const ctx = canvas.getContext('2d');
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // Dibuja la órbita elíptica con la Tierra en el foco
+  // Dibuja la órbita elíptica con la Tierra en el foco y escala dinámica
   if (a && excentricidad !== null) {
     const c = a * excentricidad;
     const xc = canvas.width/2, yc = canvas.height/2;
-    let escala = 120 / (a + apogeo); // se ajusta para mostrar bien en canvas
+
+    // Escala dinámica: el radio máximo es la distancia al apogeo
+    const distancia_apogeo = a * (1 + excentricidad); // km
+    const margen_canvas = 30; // píxeles de margen
+    const escala = (canvas.width/2 - margen_canvas) / distancia_apogeo;
     const focoX = xc + c * escala;
 
     // Órbita (elipse)
@@ -274,7 +278,7 @@ window.mostrarOrbitaPlanta = function(index) {
 
     // Dibuja la Tierra en el foco como imagen PNG
     const img = new Image();
-    img.src = 'img/earth.png';  // Cambia si tienes una local
+    img.src = 'img/earth.png'; // Usa tu ruta local, o una URL pública si prefieres
     img.onload = function() {
       const earthRadiusPx = radioTierra * escala;
       ctx.save();
