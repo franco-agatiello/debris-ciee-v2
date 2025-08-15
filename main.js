@@ -75,7 +75,10 @@ function popupContenidoDebris(d,index){
   if(d.inclinacion_orbita !== null && d.inclinacion_orbita !== undefined) contenido += `Inclinación órbita: ${d.inclinacion_orbita}°<br>`;
   if(d.fecha) contenido += `Fecha: ${d.fecha}<br>`;
   if(d.imagen) contenido += `<img src="${d.imagen}" alt="${d.nombre}"><br>`;
-  if(d.tle1 && d.tle2) contenido += `<button class="btn btn-sm btn-info mt-2" onclick="mostrarOrbita(${index})">Ver órbita</button>`;
+  if(d.tle1 && d.tle2) {
+    contenido += `<button class="btn btn-sm btn-info mt-2" onclick="mostrarOrbita(${index})">Ver órbita</button>`;
+    contenido += `<button class="btn btn-sm btn-warning mt-2 ms-1" onclick="mostrarOrbitaPlanta(${index})">Vista en planta</button>`;
+  }
   return contenido;
 }
 
@@ -236,6 +239,88 @@ window.mostrarOrbita = function(index) {
   }, 300);
 
   const modal = new bootstrap.Modal(document.getElementById('modalOrbita'));
+  modal.show();
+};
+
+// --- NUEVA FUNCIÓN: VISTA EN PLANTA DE LA ÓRBITA ---
+window.mostrarOrbitaPlanta = function(index) {
+  const d = filtrarDatos()[index];
+  if (!d.tle1 || !d.tle2) return alert("No hay TLE para este debris.");
+
+  // Parámetros orbitales
+  const a = d.a ?? null; // semi eje mayor [km]
+  const apogeo = d.apogeo ?? null; // [km]
+  const perigeo = d.perigeo ?? null; // [km]
+  let excentricidad = null;
+
+  // Si no viene excentricidad, la calculamos:
+  if (a && apogeo !== null && perigeo !== null) {
+    // apogeo = a*(1+e) - RT , perigeo = a*(1-e) - RT , RT = radio tierra
+    // e = (apogeo - perigeo)/(apogeo + perigeo + 2*RT)
+    excentricidad = (apogeo - perigeo) / (apogeo + perigeo + 2*6371);
+  } else {
+    excentricidad = null;
+  }
+
+  // Muestra los datos
+  let infoHTML = `<strong>Parámetros orbitales:</strong><br>`;
+  if (a) infoHTML += `Semi eje mayor (a): <b>${a.toFixed(2)}</b> km<br>`;
+  if (apogeo) infoHTML += `Apogeo: <b>${apogeo.toFixed(2)}</b> km<br>`;
+  if (perigeo) infoHTML += `Perigeo: <b>${perigeo.toFixed(2)}</b> km<br>`;
+  if (excentricidad !== null) infoHTML += `Excentricidad: <b>${excentricidad.toFixed(4)}</b><br>`;
+  document.getElementById('orbitaPlantaInfo').innerHTML = infoHTML;
+
+  // Dibuja la órbita en planta (canvas)
+  const canvas = document.getElementById('canvasPlanta');
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Dibujar la Tierra
+  const xc = canvas.width/2, yc = canvas.height/2;
+  const radioTierra = 6371; // km
+  let escala = 1;
+  if (a) escala = 120 / a; // escalamos para que se vea bien
+
+  // Tierra
+  ctx.beginPath();
+  ctx.arc(xc, yc, radioTierra * escala, 0, 2*Math.PI, false);
+  ctx.fillStyle = "#0099cc";
+  ctx.globalAlpha = 0.3;
+  ctx.fill();
+  ctx.globalAlpha = 1;
+  ctx.strokeStyle = "#0099cc";
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Órbita (elipse)
+  if (a && excentricidad !== null) {
+    const b = a * Math.sqrt(1 - excentricidad*excentricidad); // semi eje menor
+    ctx.beginPath();
+    ctx.ellipse(
+      xc,
+      yc,
+      a * escala,
+      b * escala,
+      0,
+      0,
+      2*Math.PI
+    );
+    ctx.strokeStyle = "#ff9900";
+    ctx.lineWidth = 3;
+    ctx.stroke();
+
+    // Marca apogeo y perigeo
+    ctx.fillStyle = "#ff0000";
+    ctx.beginPath();
+    ctx.arc(xc + (a - (a*excentricidad)) * escala, yc, 5, 0, 2*Math.PI);
+    ctx.fill(); // perigeo
+    ctx.beginPath();
+    ctx.arc(xc - (a - (a*excentricidad)) * escala, yc, 5, 0, 2*Math.PI);
+    ctx.fill(); // apogeo
+  }
+
+  // Abre el modal
+  const modal = new bootstrap.Modal(document.getElementById('modalOrbitaPlanta'));
   modal.show();
 };
 
