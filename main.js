@@ -257,29 +257,25 @@ window.mostrarOrbitaPlanta = function(index) {
   const ctx = canvas.getContext('2d');
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // Dibuja la órbita elíptica con la Tierra en el foco y escala dinámica
+  // Dibuja la órbita elíptica con la Tierra en el foco y escala dinámica ajustada
   if (a && excentricidad !== null) {
+    const margen_canvas = 30;
     const c = a * excentricidad;
-    const xc = canvas.width/2, yc = canvas.height/2;
+    const b = a * Math.sqrt(1 - excentricidad*excentricidad);
 
-    // Escala dinámica: el radio máximo es la distancia al apogeo
-  const margen_canvas = 30; // píxeles de margen
-  const c = a * excentricidad;
-  const b = a * Math.sqrt(1 - excentricidad*excentricidad);
-  const ancho_izq = a - c;
-  const ancho_der = a + c;
-  const ancho_total = ancho_izq + ancho_der;
-  const alto_total = 2 * b;
-  const escala_x = (canvas.width - 2 * margen_canvas) / (ancho_total);
-  const escala_y = (canvas.height - 2 * margen_canvas) / (alto_total);
-  const escala = Math.min(escala_x, escala_y);
+    const ancho_izq = a - c;
+    const ancho_der = a + c;
+    const ancho_total = ancho_izq + ancho_der;
+    const alto_total = 2 * b;
+    const escala_x = (canvas.width - 2 * margen_canvas) / (ancho_total);
+    const escala_y = (canvas.height - 2 * margen_canvas) / (alto_total);
+    const escala = Math.min(escala_x, escala_y);
 
-  const xc = canvas.width / 2;
-  const yc = canvas.height / 2;
-  const focoX = xc + c * escala;
+    const xc = canvas.width / 2;
+    const yc = canvas.height / 2;
+    const focoX = xc + c * escala;
 
     // Órbita (elipse)
-    const b = a * Math.sqrt(1 - excentricidad*excentricidad);
     ctx.beginPath();
     ctx.ellipse(xc, yc, a * escala, b * escala, 0, 0, 2*Math.PI);
     ctx.strokeStyle = "#ff9900";
