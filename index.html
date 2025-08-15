@@ -1,96 +1,104 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="utf-8">
-  <title>Mapa de Debris Espaciales</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <!-- Leaflet CSS -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-  <link rel="stylesheet" href="styles.css"/>
-  <!-- Bootstrap (opcional para modales y botones) -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Dashboard | Debris Espaciales</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5/dist/css/bootstrap.min.css"/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css"/>
+  <link rel="stylesheet" href="style.css"/>
 </head>
 <body>
   <div class="container-fluid">
     <div class="row flex-nowrap">
-      <nav id="sidebar">
-        <img src="img/logo.png" alt="Logo" class="sidebar-logo"/>
+      <!-- Sidebar de Filtros -->
+      <aside class="col-md-2 col-lg-2 p-2 bg-light" id="sidebar">
+        <a href="https://www.ciee.unlp.edu.ar/" target="_blank" rel="noopener">
+          <img src="Captura de pantalla 2025-06-06 211123.png" alt="Logo Derbis" class="sidebar-logo mb-3">
+        </a>
         <h4>Filtros</h4>
         <form id="filter-form">
-          <label for="dropdownPaisBtn">País</label>
-          <div class="dropdown mb-2">
-            <button class="btn btn-light dropdown-toggle" type="button" id="dropdownPaisBtn" data-bs-toggle="dropdown" aria-expanded="false" data-value="">Todos</button>
-            <ul class="dropdown-menu" id="dropdownPaisMenu"></ul>
+          <label for="pais-dropdown">País de origen:</label>
+          <div class="dropdown mb-2" id="pais-dropdown">
+            <button class="btn btn-outline-secondary dropdown-toggle w-100" type="button" id="dropdownPaisBtn" data-bs-toggle="dropdown" aria-expanded="false">
+              Seleccionar país
+            </button>
+            <ul class="dropdown-menu w-100" aria-labelledby="dropdownPaisBtn" id="dropdownPaisMenu" style="max-height:220px; overflow-y:auto;">
+              <!-- Los <li> de país se llenan por JS -->
+            </ul>
           </div>
-          <label for="fecha-desde">Fecha desde</label>
-          <input type="date" id="fecha-desde" class="form-control"/>
-          <label for="fecha-hasta">Fecha hasta</label>
-          <input type="date" id="fecha-hasta" class="form-control"/>
-          <label for="inclinacion-min">Inclinación mínima</label>
-          <input type="number" id="inclinacion-min" class="form-control" min="0" max="180"/>
-          <label for="inclinacion-max">Inclinación máxima</label>
-          <input type="number" id="inclinacion-max" class="form-control" min="0" max="180"/>
+          <label for="fecha-desde">Fecha desde:</label>
+          <input type="date" class="form-control mb-2" id="fecha-desde"/>
+          <label for="fecha-hasta">Fecha hasta:</label>
+          <input type="date" class="form-control mb-2" id="fecha-hasta"/>
+          <label for="inclinacion-min">Inclinación órbita (°):</label>
+          <div class="row g-1 mb-2">
+            <div class="col">
+              <input type="number" class="form-control" id="inclinacion-min" placeholder="Mín" min="0" max="180">
+            </div>
+            <div class="col">
+              <input type="number" class="form-control" id="inclinacion-max" placeholder="Máx" min="0" max="180">
+            </div>
+          </div>
         </form>
-      </nav>
-      <main style="margin-left:210px;">
-        <div class="btn-group my-3 ms-3" role="group">
-          <button id="modo-puntos" class="btn btn-primary active">Puntos</button>
-          <button id="modo-calor" class="btn btn-secondary">Calor</button>
+        <div class="mt-4 d-grid gap-2">
+          <button type="button" class="btn btn-primary" id="modo-puntos">
+            <i class="bi bi-geo-alt-fill me-1"></i>Puntos
+          </button>
+          <button type="button" class="btn btn-secondary" id="modo-calor">
+            <i class="bi bi-fire me-1"></i>Calor
+          </button>
         </div>
+      </aside>
+      <!-- Mapa -->
+      <main class="col-md-10 col-lg-10 p-0" style="min-height:100vh;">
         <div id="map"></div>
       </main>
     </div>
+    <footer id="footer-ciee" class="d-none d-md-block">
+      <span>
+        © Copyright CIEE 2025 - All rights reserved.
+        <a href="https://www.ciee.unlp.edu.ar/" target="_blank" rel="noopener">CIEE</a>
+      </span>
+    </footer>
   </div>
-  <footer id="footer-ciee">
-    Proyecto - Mapa Debris Espaciales | <a href="https://github.com/francorocco04-beep">GitHub</a>
-  </footer>
 
-  <!-- Modal Trayectoria -->
-  <div class="modal fade" id="modalTrayectoria" tabindex="-1" aria-labelledby="modalTrayectoriaLabel" aria-hidden="true">
+  <!-- MODAL PARA ÓRBITA -->
+  <div class="modal fade" id="modalOrbita" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
       <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title">Trayectoria - <span id="nombreDebrisTrayectoria"></span></h5>
+          <h5 class="modal-title">Órbita del debris</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body">
-          <div id="mapOrbita" style="width:100%;height:400px;border-radius:16px;"></div>
+          <div id="mapOrbita" style="width: 100%; height: 400px;"></div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Modal Órbita -->
-  <div class="modal fade" id="modalOrbitaPlanta" tabindex="-1" aria-labelledby="modalOrbitaPlantaLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
+  <!-- MODAL PARA VISTA EN PLANTA DE LA ÓRBITA -->
+  <div class="modal fade" id="modalOrbitaPlanta" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-md modal-dialog-centered">
       <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title">Órbita - <span id="nombreDebrisPlanta"></span></h5>
+          <h5 class="modal-title">Órbita en planta</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
-        <div class="modal-body modal-body-planta">
-          <div class="objeto-nombre"><span id="nombreDebrisPlanta"></span></div>
-          <div id="orbitaPlantaInfo" class="orbita-parametros"></div>
-          <div class="orbita-grafica">
-            <div style="position: relative; width: fit-content; margin: 0 auto;">
-              <canvas id="canvasPlanta" width="420" height="260"></canvas>
-              <div id="tooltipPlanta"></div>
-            </div>
-          </div>
+        <div class="modal-body">
+          <div id="orbitaPlantaInfo"></div>
+          <canvas id="canvasPlanta" width="400" height="400" style="width:100%;max-width:400px;"></canvas>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Leaflet JS -->
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <!-- Bootstrap JS (requerido para modales) -->
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-  <!-- Satellite.js -->
-  <script src="https://unpkg.com/satellite.js@4.0.0/dist/satellite.min.js"></script>
-  <!-- Heatmap Leaflet plugin -->
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
-  <!-- Tu JS principal -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://unpkg.com/satellite.js/dist/satellite.min.js"></script>
   <script src="main.js"></script>
 </body>
 </html>
