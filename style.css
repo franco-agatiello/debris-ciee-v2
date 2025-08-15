@@ -191,8 +191,13 @@ main[style] {
   margin-right: 20px !important;
   margin-bottom: 20px !important;
 }
-
 #dropdownPaisMenu {
   max-height: 220px;
   overflow-y: auto;
+}
+#canvasPlanta {
+  background: #000010 !important;
+  border-radius: 12px;
+  display: block;
+  margin: 0 auto;
 }
