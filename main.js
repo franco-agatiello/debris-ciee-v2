@@ -263,10 +263,20 @@ window.mostrarOrbitaPlanta = function(index) {
     const xc = canvas.width/2, yc = canvas.height/2;
 
     // Escala dinámica: el radio máximo es la distancia al apogeo
-    const distancia_apogeo = a * (1 + excentricidad); // km
-    const margen_canvas = 30; // píxeles de margen
-    const escala = (canvas.width/2 - margen_canvas) / distancia_apogeo;
-    const focoX = xc + c * escala;
+  const margen_canvas = 30; // píxeles de margen
+  const c = a * excentricidad;
+  const b = a * Math.sqrt(1 - excentricidad*excentricidad);
+  const ancho_izq = a - c;
+  const ancho_der = a + c;
+  const ancho_total = ancho_izq + ancho_der;
+  const alto_total = 2 * b;
+  const escala_x = (canvas.width - 2 * margen_canvas) / (ancho_total);
+  const escala_y = (canvas.height - 2 * margen_canvas) / (alto_total);
+  const escala = Math.min(escala_x, escala_y);
+
+  const xc = canvas.width / 2;
+  const yc = canvas.height / 2;
+  const focoX = xc + c * escala;
 
     // Órbita (elipse)
     const b = a * Math.sqrt(1 - excentricidad*excentricidad);
