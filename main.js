@@ -146,9 +146,14 @@ function mostrarLeyendaCalor(){
   leyendaCalor.addTo(mapa);
 }
 
-function initMapa(){
-  mapa=L.map('map').setView([0,0],2);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(mapa);
+function initMapa() {
+  mapa = L.map('map').setView([0, 0], 2);
+
+  // Argenmap gris de IGN Argentina como mapa base
+  L.tileLayer(
+    'https://wms.ign.gob.ar/geoserver/gwc/service/tms/1.0.0/mapabase_gris@EPSG%3A3857@png/{z}/{x}/{-y}.png',
+    { minZoom: 1, maxZoom: 20 }
+  ).addTo(mapa);
 }
 
 function listeners(){
@@ -166,7 +171,12 @@ window.mostrarTrayectoria = function(index) {
   setTimeout(() => {
     if (mapaTrayectoria) { mapaTrayectoria.remove(); mapaTrayectoria = null; }
     mapaTrayectoria = L.map('mapTrayectoria').setView([d.lugar_caida.lat, d.lugar_caida.lon], 3);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(mapaTrayectoria);
+
+    // Mapa base también en modal de trayectoria
+    L.tileLayer(
+      'https://wms.ign.gob.ar/geoserver/gwc/service/tms/1.0.0/mapabase_gris@EPSG%3A3857@png/{z}/{x}/{-y}.png',
+      { minZoom: 1, maxZoom: 20 }
+    ).addTo(mapaTrayectoria);
 
     const satrec = satellite.twoline2satrec(d.tle1, d.tle2);
 
