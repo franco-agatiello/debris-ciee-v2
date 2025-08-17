@@ -171,7 +171,7 @@ window.mostrarTrayectoria = function(index) {
     if (mapaTrayectoria) { mapaTrayectoria.remove(); mapaTrayectoria = null; }
     mapaTrayectoria = L.map('mapTrayectoria').setView([d.lugar_caida.lat, d.lugar_caida.lon], 3);
    var CartoDB_PositronNoLabels = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png', {
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(mapa);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(mapaTrayectoria);
 
     const satrec = satellite.twoline2satrec(d.tle1, d.tle2);
 
