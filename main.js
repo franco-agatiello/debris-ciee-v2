@@ -363,9 +363,9 @@ window.mostrarOrbita3D = function(index) {
     controls.dampingFactor = 0.25;
     controls.enableZoom = true;
 
-    // Usando una textura de la NASA más liviana y sin problemas de CORS
+    // Usando una textura de la NASA que debería funcionar sin problemas
     const textureLoader = new THREE.TextureLoader();
-    const earthTexture = textureLoader.load('https://visibleearth.nasa.gov/images/57752/blue-marble-clouds/bluemarble_west_2048.jpg',
+    const earthTexture = textureLoader.load('https://www.nasa.gov/images/content/138139main_earth_full.jpg',
       function(texture) {
         const geometry = new THREE.SphereGeometry(radioTierra, 64, 64);
         const material = new THREE.MeshBasicMaterial({ map: texture });
