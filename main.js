@@ -1,3 +1,6 @@
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
 let debris = [];
 let mapa, capaPuntos, capaCalor, modo = "puntos";
 let leyendaPuntos, leyendaCalor;
@@ -79,7 +82,6 @@ function popupContenidoDebris(d,index){
   if(d.imagen) contenido += `<img src="${d.imagen}" alt="${d.nombre}"><br>`;
   if(d.tle1 && d.tle2) {
     contenido += `<button class="btn btn-sm btn-info mt-2" onclick="mostrarTrayectoria(${index})">Ver trayectoria</button>`;
-    // Cambiando la función de visualización de órbita
     contenido += `<button class="btn btn-sm btn-warning mt-2 ms-1" onclick="mostrarOrbita3D(${index})">Ver órbita 3D</button>`;
   }
   return contenido;
@@ -321,7 +323,6 @@ window.mostrarOrbitaPlanta = function(index) {
   modal.show();
 };
 
-// **NUEVA FUNCIÓN DE VISUALIZACIÓN DE ÓRBITA 3D**
 window.mostrarOrbita3D = function(index) {
   const d = filtrarDatos()[index];
   if (!d.tle1 || !d.tle2) {
