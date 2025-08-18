@@ -329,20 +329,31 @@ window.mostrarOrbita3D = function(index) {
     return alert("No hay TLE para este debris.");
   }
 
-  // Obtener el contenedor y crear la escena
-  const container = document.getElementById('orbita3DContainer');
-  if (!container) return;
+  const modal = new bootstrap.Modal(document.getElementById('modalOrbita3D'));
+  
+  // Escuchamos el evento `shown.bs.modal`
+  document.getElementById('modalOrbita3D').addEventListener('shown.bs.modal', () => {
+    // Estas funciones se ejecutarán solo cuando el modal sea visible
+    init(d);
+    animate();
+  }, { once: true }); // Usamos { once: true } para que el listener se elimine solo
+
+  modal.show();
 
   let scene, camera, renderer, earth, controls, line;
+  
+  // Las funciones `init` y `animate` ya no están dentro de `mostrarOrbita3D`
+  function init(d) {
+    const container = document.getElementById('orbita3DContainer');
+    if (!container) return;
 
-  function init() {
     scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x000010); // Establecer el color de fondo
+    scene.background = new THREE.Color(0x000010);
 
     camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 100000);
     camera.position.z = radioTierra * 3;
 
-    renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false }); // alpha false
     renderer.setSize(container.clientWidth, container.clientHeight);
     renderer.setPixelRatio(window.devicePixelRatio);
     container.innerHTML = '';
@@ -353,7 +364,7 @@ window.mostrarOrbita3D = function(index) {
     controls.dampingFactor = 0.25;
     controls.enableZoom = true;
 
-    // Crear la Tierra con una URL de textura más confiable
+    // Crear la Tierra
     const textureLoader = new THREE.TextureLoader();
     const earthTexture = textureLoader.load('https://eoimages.gsfc.nasa.gov/images/imagerecords/57000/57735/land_shallow_topo_2048.jpg');
     const geometry = new THREE.SphereGeometry(radioTierra, 64, 64);
@@ -361,12 +372,15 @@ window.mostrarOrbita3D = function(index) {
     earth = new THREE.Mesh(geometry, material);
     scene.add(earth);
 
-    // Añadir una luz para que la órbita sea visible
+    // Añadir una luz
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
     scene.add(ambientLight);
+    
+    // Llamar a plotOrbit aquí para que tenga acceso a la escena
+    plotOrbit(d);
   }
 
-  function plotOrbit() {
+  function plotOrbit(d) {
     const satrec = satellite.twoline2satrec(d.tle1, d.tle2);
     const meanMotion = satrec.no * 1440 / (2 * Math.PI);
     const periodoMin = 1440 / meanMotion;
@@ -401,13 +415,6 @@ window.mostrarOrbita3D = function(index) {
     controls.update();
     renderer.render(scene, camera);
   }
-
-  init();
-  plotOrbit();
-  animate();
-
-  const modal = new bootstrap.Modal(document.getElementById('modalOrbita3D'));
-  modal.show();
 };
 
 document.addEventListener("DOMContentLoaded", ()=>{
