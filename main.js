@@ -82,7 +82,6 @@ function popupContenidoDebris(d,index){
   if(d.imagen) contenido += `<img src="${d.imagen}" alt="${d.nombre}"><br>`;
   if(d.tle1 && d.tle2) {
     contenido += `<button class="btn btn-sm btn-info mt-2" onclick="mostrarTrayectoria(${index})">Ver trayectoria</button>`;
-    // Se ha cambiado la función de visualización de órbita para la versión 3D
     contenido += `<button class="btn btn-sm btn-warning mt-2 ms-1" onclick="mostrarOrbita3D(${index})">Ver órbita 3D</button>`;
   }
   return contenido;
@@ -329,20 +328,23 @@ window.mostrarOrbita3D = function(index) {
     return alert("No hay TLE para este debris.");
   }
 
-  const modal = new bootstrap.Modal(document.getElementById('modalOrbita3D'));
+  // Obtener el modal y escuchar el evento 'shown.bs.modal'
+  const modalElement = document.getElementById('modalOrbita3D');
+  const modal = new bootstrap.Modal(modalElement);
   
-  // Escuchamos el evento `shown.bs.modal`
-  document.getElementById('modalOrbita3D').addEventListener('shown.bs.modal', () => {
+  modalElement.addEventListener('shown.bs.modal', function onModalShown() {
     // Estas funciones se ejecutarán solo cuando el modal sea visible
     init(d);
     animate();
-  }, { once: true }); // Usamos { once: true } para que el listener se elimine solo
+
+    // Eliminar el listener después de la primera ejecución
+    modalElement.removeEventListener('shown.bs.modal', onModalShown);
+  });
 
   modal.show();
 
   let scene, camera, renderer, earth, controls, line;
-  
-  // Las funciones `init` y `animate` ya no están dentro de `mostrarOrbita3D`
+
   function init(d) {
     const container = document.getElementById('orbita3DContainer');
     if (!container) return;
@@ -353,7 +355,7 @@ window.mostrarOrbita3D = function(index) {
     camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 100000);
     camera.position.z = radioTierra * 3;
 
-    renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false }); // alpha false
+    renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
     renderer.setSize(container.clientWidth, container.clientHeight);
     renderer.setPixelRatio(window.devicePixelRatio);
     container.innerHTML = '';
@@ -366,17 +368,26 @@ window.mostrarOrbita3D = function(index) {
 
     // Crear la Tierra
     const textureLoader = new THREE.TextureLoader();
-    const earthTexture = textureLoader.load('https://eoimages.gsfc.nasa.gov/images/imagerecords/57000/57735/land_shallow_topo_2048.jpg');
-    const geometry = new THREE.SphereGeometry(radioTierra, 64, 64);
-    const material = new THREE.MeshBasicMaterial({ map: earthTexture });
-    earth = new THREE.Mesh(geometry, material);
-    scene.add(earth);
+    const earthTexture = textureLoader.load('https://eoimages.gsfc.nasa.gov/images/imagerecords/57000/57735/land_shallow_topo_2048.jpg',
+      // Callback de éxito
+      function(texture) {
+        const geometry = new THREE.SphereGeometry(radioTierra, 64, 64);
+        const material = new THREE.MeshBasicMaterial({ map: texture });
+        earth = new THREE.Mesh(geometry, material);
+        scene.add(earth);
+      },
+      // Callback de progreso (opcional)
+      undefined,
+      // Callback de error
+      function(error) {
+        console.error('Error al cargar la textura de la Tierra:', error);
+      }
+    );
 
     // Añadir una luz
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
     scene.add(ambientLight);
     
-    // Llamar a plotOrbit aquí para que tenga acceso a la escena
     plotOrbit(d);
   }
 
@@ -398,7 +409,6 @@ window.mostrarOrbita3D = function(index) {
       if (!pos || !pos.position) continue;
       
       const eciPos = pos.position;
-      const posEcef = satellite.eciToEcf(eciPos, gmst);
       
       points.push(new THREE.Vector3(eciPos.x, eciPos.y, eciPos.z));
     }
