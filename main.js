@@ -362,7 +362,7 @@ window.mostrarOrbita3D = function(index) {
     controls.dampingFactor = 0.25;
     controls.enableZoom = true;
 
-    [cite_start]// Se cambió la ruta de la textura a la carpeta local 'img' [cite: 69]
+    // Se cambió la ruta de la textura a la carpeta local 'img'
     const textureLoader = new THREE.TextureLoader();
     const earthTexture = textureLoader.load('img/earthmap1k.jpg',
       function(texture) {
