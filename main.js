@@ -363,9 +363,9 @@ window.mostrarOrbita3D = function(index) {
     controls.dampingFactor = 0.25;
     controls.enableZoom = true;
 
-    // Usando una textura de la NASA que debería funcionar sin problemas
+    // Usando una textura alojada en un servidor con CORS configurado
     const textureLoader = new THREE.TextureLoader();
-    const earthTexture = textureLoader.load('https://www.nasa.gov/images/content/138139main_earth_full.jpg',
+    const earthTexture = textureLoader.load('https://s3-us-west-2.amazonaws.com/s.cdpn.io/122460/earth_map_2048x1024.jpg',
       function(texture) {
         const geometry = new THREE.SphereGeometry(radioTierra, 64, 64);
         const material = new THREE.MeshBasicMaterial({ map: texture });
