@@ -38,8 +38,7 @@ function poblarFiltros() {
 
 function obtenerFiltros() {
   return {
-    pais: document.getElementById("dropdownPaisBtn").dataset.value ??
-"",
+    pais: document.getElementById("dropdownPaisBtn").dataset.value ?? "",
     fechaDesde: document.getElementById("fecha-desde").value,
     fechaHasta: document.getElementById("fecha-hasta").value,
     inclinacionMin: document.getElementById("inclinacion-min").value,
@@ -363,7 +362,7 @@ window.mostrarOrbita3D = function(index) {
     controls.dampingFactor = 0.25;
     controls.enableZoom = true;
 
-    // Usando una textura alojada en un servidor con CORS configurado
+    [cite_start]// Se cambió la ruta de la textura a la carpeta local 'img' [cite: 69]
     const textureLoader = new THREE.TextureLoader();
     const earthTexture = textureLoader.load('img/earthmap1k.jpg',
       function(texture) {
@@ -403,7 +402,8 @@ window.mostrarOrbita3D = function(index) {
       
       const eciPos = pos.position;
       
-      points.push(new THREE.Vector3(eciPos.x, eciPos.y, eciPos.z));
+      // Corregido: Intercambiar Y y Z para que coincidan con la orientación de Three.js (Y arriba)
+      points.push(new THREE.Vector3(eciPos.x, eciPos.z, -eciPos.y));
     }
 
     if (points.length > 1) {
