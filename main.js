@@ -337,6 +337,8 @@ window.mostrarOrbita3D = function(index) {
 
   function init() {
     scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x000010); // Establecer el color de fondo
+
     camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 100000);
     camera.position.z = radioTierra * 3;
 
@@ -351,9 +353,9 @@ window.mostrarOrbita3D = function(index) {
     controls.dampingFactor = 0.25;
     controls.enableZoom = true;
 
-    // Crear la Tierra
+    // Crear la Tierra con una URL de textura más confiable
     const textureLoader = new THREE.TextureLoader();
-    const earthTexture = textureLoader.load('https://cdn.jsdelivr.net/npm/three-globe@2.27.0/example/img/earth-water.png');
+    const earthTexture = textureLoader.load('https://eoimages.gsfc.nasa.gov/images/imagerecords/57000/57735/land_shallow_topo_2048.jpg');
     const geometry = new THREE.SphereGeometry(radioTierra, 64, 64);
     const material = new THREE.MeshBasicMaterial({ map: earthTexture });
     earth = new THREE.Mesh(geometry, material);
