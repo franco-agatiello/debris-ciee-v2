@@ -277,7 +277,7 @@ window.mostrarOrbitaPlanta = function(index) {
   renderer.setClearColor(0x111122, 1);
   container.appendChild(renderer.domElement);
 
-  // Controls
+  // Controls (Three.js v0.149.0 UMD global)
   const controls = new THREE.OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true;
   controls.dampingFactor = 0.1;
