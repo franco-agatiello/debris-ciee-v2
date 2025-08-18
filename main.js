@@ -82,6 +82,7 @@ function popupContenidoDebris(d,index){
   if(d.imagen) contenido += `<img src="${d.imagen}" alt="${d.nombre}"><br>`;
   if(d.tle1 && d.tle2) {
     contenido += `<button class="btn btn-sm btn-info mt-2" onclick="mostrarTrayectoria(${index})">Ver trayectoria</button>`;
+    // Se ha cambiado la función de visualización de órbita para la versión 3D
     contenido += `<button class="btn btn-sm btn-warning mt-2 ms-1" onclick="mostrarOrbita3D(${index})">Ver órbita 3D</button>`;
   }
   return contenido;
@@ -184,8 +185,7 @@ window.mostrarTrayectoria = function(index) {
 
     const meanMotion = satrec.no * 1440 / (2 * Math.PI); // satrec.no en rad/min
     const periodoMin = 1440 / meanMotion;
-    const vueltas 
-= 4;
+    const vueltas = 4;
     const minutosATrazar = periodoMin * vueltas;
 
     const jday = satrec.epochdays;
