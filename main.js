@@ -365,7 +365,7 @@ window.mostrarOrbita3D = function(index) {
 
     // Usando una textura alojada en un servidor con CORS configurado
     const textureLoader = new THREE.TextureLoader();
-    const earthTexture = textureLoader.load('https://s3-us-west-2.amazonaws.com/s.cdpn.io/122460/earth_map_2048x1024.jpg',
+    const earthTexture = textureLoader.load('img/earthmap1k.jpg',
       function(texture) {
         const geometry = new THREE.SphereGeometry(radioTierra, 64, 64);
         const material = new THREE.MeshBasicMaterial({ map: texture });
