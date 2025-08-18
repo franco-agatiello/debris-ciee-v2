@@ -1,9 +1,3 @@
-// --- IMPORTS THREE.JS MODERNOS ---
-import * as THREE from 'https://unpkg.com/three@0.155.0/build/three.module.js';
-import { OrbitControls } from 'https://unpkg.com/three@0.155.0/examples/jsm/controls/OrbitControls.js';
-import { GLTFLoader } from 'https://unpkg.com/three@0.155.0/examples/jsm/loaders/GLTFLoader.js';
-
-// --- VARIABLES Y CONSTANTES ORIGINALES ---
 let debris = [];
 let mapa, capaPuntos, capaCalor, modo = "puntos";
 let leyendaPuntos, leyendaCalor;
@@ -16,7 +10,6 @@ const iconoVerde = L.icon({iconUrl:'https://raw.githubusercontent.com/pointhi/le
 const iconoRojo = L.icon({iconUrl:'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',iconSize:[18,29],iconAnchor:[9,29],popupAnchor:[1,-30]});
 const iconoAmarillo = L.icon({iconUrl:'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-yellow.png',iconSize:[18,29],iconAnchor:[9,29],popupAnchor:[1,-30]});
 
-// --- FUNCIONES ORIGINALES ---
 async function cargarDatos() {
   const resp = await fetch('data/debris.json');
   debris = await resp.json();
@@ -42,7 +35,8 @@ function poblarFiltros() {
 
 function obtenerFiltros() {
   return {
-    pais: document.getElementById("dropdownPaisBtn").dataset.value ?? "",
+    pais: document.getElementById("dropdownPaisBtn").dataset.value ??
+"",
     fechaDesde: document.getElementById("fecha-desde").value,
     fechaHasta: document.getElementById("fecha-hasta").value,
     inclinacionMin: document.getElementById("inclinacion-min").value,
@@ -85,7 +79,8 @@ function popupContenidoDebris(d,index){
   if(d.imagen) contenido += `<img src="${d.imagen}" alt="${d.nombre}"><br>`;
   if(d.tle1 && d.tle2) {
     contenido += `<button class="btn btn-sm btn-info mt-2" onclick="mostrarTrayectoria(${index})">Ver trayectoria</button>`;
-    contenido += `<button class="btn btn-sm btn-warning mt-2 ms-1" onclick="mostrarOrbitaPlanta(${index})">Ver órbita</button>`;
+    // Cambiando la función de visualización de órbita
+    contenido += `<button class="btn btn-sm btn-warning mt-2 ms-1" onclick="mostrarOrbita3D(${index})">Ver órbita 3D</button>`;
   }
   return contenido;
 }
@@ -97,7 +92,6 @@ function actualizarMapa(){
   if(capaCalor && mapa.hasLayer(capaCalor)){mapa.removeLayer(capaCalor); capaCalor=null;}
   if(leyendaPuntos) leyendaPuntos.remove();
   if(leyendaCalor) leyendaCalor.remove();
-
   if(modo==="puntos"){
     capaPuntos=L.layerGroup();
     datosFiltrados.forEach((d,i)=>{
@@ -153,9 +147,14 @@ function mostrarLeyendaCalor(){
   leyendaCalor.addTo(mapa);
 }
 
-function initMapa(){
-  mapa=L.map('map').setView([0,0],2);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(mapa);
+function initMapa() {
+  mapa = L.map('map').setView([0, 0], 2);
+
+  // Capa base color de IGN Argentina
+  L.tileLayer(
+    'https://wms.ign.gob.ar/geoserver/gwc/service/tms/1.0.0/capabaseargenmap@EPSG%3A3857@png/{z}/{x}/{-y}.png',
+    { minZoom: 1, maxZoom: 20 }
+  ).addTo(mapa);
 }
 
 function listeners(){
@@ -166,143 +165,248 @@ function listeners(){
   document.getElementById("modo-calor").addEventListener("click",()=>{modo="calor"; actualizarMapa();});
 }
 
-// --- FUNCIONES DE VISUALIZACIÓN DE TRAYECTORIA IGUAL QUE ANTES ---
 window.mostrarTrayectoria = function(index) {
-  // ... igual que tu función original ...
-  // (no se modifica aquí para respetar tu estructura)
+  const d = filtrarDatos()[index];
+  if (!d.tle1 || !d.tle2) return alert("No hay TLE para este debris.");
+  setTimeout(() => {
+    if (mapaTrayectoria) { mapaTrayectoria.remove(); mapaTrayectoria = null; }
+    mapaTrayectoria = L.map('mapTrayectoria').setView([d.lugar_caida.lat, d.lugar_caida.lon], 3);
+
+    // Capa base color de IGN Argentina en el modal también
+    L.tileLayer(
+      'https://wms.ign.gob.ar/geoserver/gwc/service/tms/1.0.0/capabaseargenmap@EPSG%3A3857@png/{z}/{x}/{-y}.png',
+      { minZoom: 1, maxZoom: 20 }
+    ).addTo(mapaTrayectoria);
+
+    const satrec = satellite.twoline2satrec(d.tle1, d.tle2);
+
+    const meanMotion = satrec.no * 1440 / (2 * Math.PI); // satrec.no en rad/min
+    const periodoMin = 1440 / meanMotion;
+    const vueltas 
+= 4;
+    const minutosATrazar = periodoMin * vueltas;
+
+    const jday = satrec.epochdays;
+    const year = satrec.epochyr < 57 ? satrec.epochyr + 2000 : satrec.epochyr + 1900;
+    const epochDate = new Date(Date.UTC(year, 0, 1, 0, 0, 0, 0) + (jday - 1) * 24 * 60 * 60 * 1000);
+
+    let segments = [], segment = [], prevLon = null;
+    for (let min = 0; min <= minutosATrazar; min += 1) {
+      const time = new Date(epochDate.getTime() + min * 60000);
+      const gmst = satellite.gstime(time);
+      const pos = satellite.propagate(satrec, time);
+
+      if (!pos || !pos.position) continue;
+
+      const geo = satellite.eciToGeodetic(pos.position, gmst);
+      let lat = satellite.degreesLat(geo.latitude);
+      let lon = satellite.degreesLong(geo.longitude);
+
+      if (isNaN(lat) || isNaN(lon) || Math.abs(lat) > 90) continue;
+      lon = ((lon + 180) % 360 + 360) % 360 - 180;
+      if (prevLon !== null) {
+        let delta = Math.abs(lon - prevLon);
+        if (delta > 30) {
+          if (segment.length > 1) segments.push(segment);
+          segment = [];
+        }
+      }
+      segment.push([lat, lon]);
+      prevLon = lon;
+    }
+    if (segment.length > 1) segments.push(segment);
+
+    segments.forEach(seg => {
+      L.polyline(seg, { color: "#3f51b5", weight: 2 }).addTo(mapaTrayectoria);
+    });
+    L.marker([d.lugar_caida.lat, d.lugar_caida.lon])
+      .addTo(mapaTrayectoria)
+      .bindPopup("Punto de caída")
+      .openPopup();
+    if (segments.length && segments[0].length > 1) {
+      let bounds = segments.flat();
+      mapaTrayectoria.fitBounds(bounds, {padding: [20, 20]});
+    } else {
+      mapaTrayectoria.setView([d.lugar_caida.lat, d.lugar_caida.lon], 3);
+    }
+  }, 300);
+
+  const modal = new bootstrap.Modal(document.getElementById('modalTrayectoria'));
+  modal.show();
 };
 
-// --- MODIFICACIÓN CLAVE: VISUALIZACIÓN 3D DE ÓRBITA CON THREE.JS MODERNO ---
 window.mostrarOrbitaPlanta = function(index) {
   const d = filtrarDatos()[index];
   if (!d.tle1 || !d.tle2) return alert("No hay TLE para este debris.");
 
-  // Modal Bootstrap
-  const modal = new bootstrap.Modal(document.getElementById('modalOrbitaPlanta3D'));
+  const a = d.a ?? null;
+  const apogeo = d.apogeo ?? null;
+  const perigeo = d.perigeo ?? null;
+  let excentricidad = null;
+  if (a && apogeo !== null && perigeo !== null) {
+    excentricidad = (apogeo - perigeo) / (apogeo + perigeo + 2*radioTierra);
+  } else {
+    excentricidad = null;
+  }
+
+  let infoHTML = `<strong>Parámetros orbitales:</strong><br>`;
+  if (a) infoHTML += `Semi eje mayor (a): <b>${a.toFixed(2)}</b> km<br>`;
+  if (apogeo) infoHTML += `Apogeo: <b>${apogeo.toFixed(2)}</b> km<br>`;
+  if (perigeo) infoHTML += `Perigeo: <b>${perigeo.toFixed(2)}</b> km<br>`;
+  if (excentricidad !== null) infoHTML += `Excentricidad: <b>${excentricidad.toFixed(4)}</b><br>`;
+  document.getElementById('orbitaPlantaInfo').innerHTML = infoHTML;
+  const canvas = document.getElementById('canvasPlanta');
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  if (a && excentricidad !== null) {
+    const margen_canvas = 30;
+    const c = a * excentricidad;
+    const b = a * Math.sqrt(1 - excentricidad*excentricidad);
+
+    const ancho_izq = a - c;
+    const ancho_der = a + c;
+    const ancho_total = ancho_izq + ancho_der;
+    const alto_total = 2 * b;
+    const escala_x = (canvas.width - 2 * margen_canvas) / (ancho_total);
+    const escala_y = (canvas.height - 2 * margen_canvas) / (alto_total);
+    const escala = Math.min(escala_x, escala_y);
+
+    const xc = canvas.width / 2;
+    const yc = canvas.height / 2;
+    const focoX = xc + c * escala;
+
+    ctx.beginPath();
+    ctx.ellipse(xc, yc, a * escala, b * escala, 0, 0, 2*Math.PI);
+    ctx.strokeStyle = "#ff9900";
+    ctx.lineWidth = 3;
+    ctx.stroke();
+
+    const img = new Image();
+    img.src = 'img/earth.png';
+    img.onload = function() {
+      const earthRadiusPx = radioTierra * escala;
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(focoX, yc, earthRadiusPx, 0, 2*Math.PI);
+      ctx.closePath();
+      ctx.clip();
+      ctx.drawImage(img, focoX - earthRadiusPx, yc - earthRadiusPx, earthRadiusPx * 2, earthRadiusPx * 2);
+      ctx.restore();
+
+      ctx.fillStyle = "#ff0000";
+      ctx.beginPath();
+      ctx.arc(focoX + (a - c) * escala, yc, 5, 0, 2*Math.PI);
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.arc(focoX - (a + c) * escala, yc, 5, 0, 2*Math.PI);
+      ctx.fill();
+      canvas.onmousemove = function(e) {
+        const rect = canvas.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+        const perigeoX = focoX + (a - c) * escala;
+        const apogeoX = focoX - (a + c) * escala;
+        const r = 9;
+        let msg = '';
+        if (Math.hypot(mx - perigeoX, my - yc) < r) msg = 'Perigeo';
+        else if (Math.hypot(mx - apogeoX, my - yc) < r) msg = 'Apogeo';
+        else msg = '';
+        canvas.title = msg;
+      };
+    };
+  }
+
+  const modal = new bootstrap.Modal(document.getElementById('modalOrbitaPlanta'));
   modal.show();
-
-  // Limpia cualquier render 3D previo
-  const container = document.getElementById('orbita3d');
-  container.innerHTML = '';
-  document.getElementById('orbita3d-label').innerText = d.nombre || 'Órbita';
-
-  // Tamaño
-  const width = container.offsetWidth || 700;
-  const height = container.offsetHeight || 400;
-
-  // THREE.js scene setup
-  const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x111122);
-
-  // Luz
-  scene.add(new THREE.AmbientLight(0xffffff, 0.7));
-  let dir = new THREE.DirectionalLight(0xffffff, 0.7);
-  dir.position.set(3, 3, 3);
-  scene.add(dir);
-
-  // Camera
-  const camera = new THREE.PerspectiveCamera(45, width/height, 0.1, 100);
-  camera.position.set(0, 0, 3.5);
-
-  // Renderer
-  const renderer = new THREE.WebGLRenderer({antialias: true, alpha: true});
-  renderer.setSize(width, height);
-  renderer.setClearColor(0x111122, 1);
-  container.appendChild(renderer.domElement);
-
-  // Controls (ES Module)
-  const controls = new OrbitControls(camera, renderer.domElement);
-  controls.enableDamping = true;
-  controls.dampingFactor = 0.1;
-  controls.enablePan = false;
-  controls.maxDistance = 8;
-  controls.minDistance = 1.5;
-
-  // Modelo Tierra low poly NASA
-  const EARTH_MODEL = "https://raw.githubusercontent.com/CMYK-Chaco/assets-public/main/earth-lowpoly.glb";
-  const loader = new GLTFLoader();
-  loader.load(EARTH_MODEL, function(gltf) {
-    const earth = gltf.scene;
-    earth.scale.set(1,1,1);
-    scene.add(earth);
-  });
-
-  // Calcular y graficar órbita con satellite.js
-  try {
-    const satrec = satellite.twoline2satrec(d.tle1, d.tle2);
-    let meanMotion = satrec.no;
-    if (!meanMotion || meanMotion < 1e-5) meanMotion = 0.07;
-    const periodoMin = (2 * Math.PI) / meanMotion;
-
-    let points = [];
-    for (let t = 0; t <= periodoMin; t += periodoMin/300) {
-      const now = new Date();
-      const time = new Date(now.getTime() + t * 60 * 1000);
-      const pos = satellite.propagate(satrec, time);
-      if (!pos.position) continue;
-      const gmst = satellite.gstime(time);
-      const ecf = satellite.eciToEcf(pos.position, gmst);
-      points.push(new THREE.Vector3(ecf.x/6371, ecf.y/6371, ecf.z/6371));
-    }
-
-    if (points.length > 2) {
-      const curve = new THREE.CatmullRomCurve3(points, true);
-      const geometry = new THREE.TubeGeometry(curve, 300, 0.008, 8, true);
-      const material = new THREE.MeshBasicMaterial({ color: 0xffa500 });
-      const orbit = new THREE.Mesh(geometry, material);
-      scene.add(orbit);
-
-      // Perigeo y apogeo
-      let minDist = Infinity, maxDist = 0, idxMin = 0, idxMax = 0;
-      points.forEach((v, idx) => {
-        const d = v.length();
-        if (d < minDist) { minDist = d; idxMin = idx; }
-        if (d > maxDist) { maxDist = d; idxMax = idx; }
-      });
-      // Perigeo
-      const perigeoGeo = new THREE.SphereGeometry(0.025, 16, 16);
-      const perigeoMat = new THREE.MeshBasicMaterial({color: 0x00ff00});
-      const perigeo = new THREE.Mesh(perigeoGeo, perigeoMat);
-      perigeo.position.copy(points[idxMin]);
-      scene.add(perigeo);
-      // Apogeo
-      const apogeoGeo = new THREE.SphereGeometry(0.025, 16, 16);
-      const apogeoMat = new THREE.MeshBasicMaterial({color: 0xff2222});
-      const apogeo = new THREE.Mesh(apogeoGeo, apogeoMat);
-      apogeo.position.copy(points[idxMax]);
-      scene.add(apogeo);
-    }
-  } catch (e) {
-    alert("No se pudo calcular la órbita: " + e.message);
-  }
-
-  // Redimensiona canvas 3D si el modal cambia tamaño
-  function onResize() {
-    const w = container.offsetWidth || 700;
-    const h = container.offsetHeight || 400;
-    camera.aspect = w/h;
-    camera.updateProjectionMatrix();
-    renderer.setSize(w, h);
-  }
-  window.addEventListener('resize', onResize);
-
-  // Animación
-  function animate() {
-    controls.update();
-    renderer.render(scene, camera);
-    requestAnimationFrame(animate);
-  }
-  animate();
-
-  // Limpia el canvas al cerrar el modal
-  document.getElementById('modalOrbitaPlanta3D').addEventListener('hidden.bs.modal', function() {
-    renderer.dispose();
-    container.innerHTML = "";
-    window.removeEventListener('resize', onResize);
-  }, { once: true });
 };
 
-// --- INICIO Y EVENTOS ---
+// **NUEVA FUNCIÓN DE VISUALIZACIÓN DE ÓRBITA 3D**
+window.mostrarOrbita3D = function(index) {
+  const d = filtrarDatos()[index];
+  if (!d.tle1 || !d.tle2) {
+    return alert("No hay TLE para este debris.");
+  }
+
+  // Obtener el contenedor y crear la escena
+  const container = document.getElementById('orbita3DContainer');
+  if (!container) return;
+
+  let scene, camera, renderer, earth, controls, line;
+
+  function init() {
+    scene = new THREE.Scene();
+    camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 100000);
+    camera.position.z = radioTierra * 3;
+
+    renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setSize(container.clientWidth, container.clientHeight);
+    renderer.setPixelRatio(window.devicePixelRatio);
+    container.innerHTML = '';
+    container.appendChild(renderer.domElement);
+
+    controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.25;
+    controls.enableZoom = true;
+
+    // Crear la Tierra
+    const textureLoader = new THREE.TextureLoader();
+    const earthTexture = textureLoader.load('https://cdn.jsdelivr.net/npm/three-globe@2.27.0/example/img/earth-water.png');
+    const geometry = new THREE.SphereGeometry(radioTierra, 64, 64);
+    const material = new THREE.MeshBasicMaterial({ map: earthTexture });
+    earth = new THREE.Mesh(geometry, material);
+    scene.add(earth);
+
+    // Añadir una luz para que la órbita sea visible
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+    scene.add(ambientLight);
+  }
+
+  function plotOrbit() {
+    const satrec = satellite.twoline2satrec(d.tle1, d.tle2);
+    const meanMotion = satrec.no * 1440 / (2 * Math.PI);
+    const periodoMin = 1440 / meanMotion;
+    const vueltas = 4;
+    const minutosATrazar = periodoMin * vueltas;
+
+    const epochDate = new Date(Date.UTC(satrec.epochyr < 57 ? satrec.epochyr + 2000 : satrec.epochyr + 1900, 0, 1) + (satrec.epochdays - 1) * 24 * 60 * 60 * 1000);
+
+    const points = [];
+    for (let min = 0; min <= minutosATrazar; min += 1) {
+      const time = new Date(epochDate.getTime() + min * 60000);
+      const gmst = satellite.gstime(time);
+      const pos = satellite.propagate(satrec, time);
+
+      if (!pos || !pos.position) continue;
+      
+      const eciPos = pos.position;
+      const posEcef = satellite.eciToEcf(eciPos, gmst);
+      
+      points.push(new THREE.Vector3(eciPos.x, eciPos.y, eciPos.z));
+    }
+
+    if (points.length > 1) {
+      const geometry = new THREE.BufferGeometry().setFromPoints(points);
+      line = new THREE.Line(geometry, new THREE.LineBasicMaterial({ color: 0xff9900 }));
+      scene.add(line);
+    }
+  }
+
+  function animate() {
+    requestAnimationFrame(animate);
+    controls.update();
+    renderer.render(scene, camera);
+  }
+
+  init();
+  plotOrbit();
+  animate();
+
+  const modal = new bootstrap.Modal(document.getElementById('modalOrbita3D'));
+  modal.show();
+};
+
 document.addEventListener("DOMContentLoaded", ()=>{
   initMapa();
   listeners();
