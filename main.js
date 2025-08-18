@@ -328,16 +328,13 @@ window.mostrarOrbita3D = function(index) {
     return alert("No hay TLE para este debris.");
   }
 
-  // Obtener el modal y escuchar el evento 'shown.bs.modal'
   const modalElement = document.getElementById('modalOrbita3D');
   const modal = new bootstrap.Modal(modalElement);
   
   modalElement.addEventListener('shown.bs.modal', function onModalShown() {
-    // Estas funciones se ejecutarán solo cuando el modal sea visible
     init(d);
     animate();
 
-    // Eliminar el listener después de la primera ejecución
     modalElement.removeEventListener('shown.bs.modal', onModalShown);
   });
 
@@ -366,25 +363,21 @@ window.mostrarOrbita3D = function(index) {
     controls.dampingFactor = 0.25;
     controls.enableZoom = true;
 
-    // Crear la Tierra
+    // Usando una textura de la NASA más liviana
     const textureLoader = new THREE.TextureLoader();
-    const earthTexture = textureLoader.load('https://eoimages.gsfc.nasa.gov/images/imagerecords/57000/57735/land_shallow_topo_2048.jpg',
-      // Callback de éxito
+    const earthTexture = textureLoader.load('https://eoimages.gsfc.nasa.gov/images/imagerecords/57000/57735/land_ocean_ice_cloud_2048.jpg',
       function(texture) {
         const geometry = new THREE.SphereGeometry(radioTierra, 64, 64);
         const material = new THREE.MeshBasicMaterial({ map: texture });
         earth = new THREE.Mesh(geometry, material);
         scene.add(earth);
       },
-      // Callback de progreso (opcional)
       undefined,
-      // Callback de error
       function(error) {
         console.error('Error al cargar la textura de la Tierra:', error);
       }
     );
 
-    // Añadir una luz
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
     scene.add(ambientLight);
     
