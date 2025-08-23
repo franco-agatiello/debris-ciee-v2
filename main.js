@@ -399,6 +399,11 @@ window.mostrarOrbita3D = function(index) {
       const pos = satellite.propagate(satrec, time);
       if (!pos || !pos.position) continue;
       const eciPos = pos.position;
+      // Nueva validación para evitar valores NaN
+      if (isNaN(eciPos.x) || isNaN(eciPos.y) || isNaN(eciPos.z)) {
+        console.warn("Valores NaN encontrados. Se detiene el trazado de la órbita.");
+        break; 
+      }
       points.push(new THREE.Vector3(eciPos.x, eciPos.z, -eciPos.y));
     }
     if (points.length > 1) {
