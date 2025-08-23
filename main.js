@@ -166,6 +166,18 @@ function listeners(){
 window.mostrarTrayectoria = function(index) { 
   const d = filtrarDatos()[index]; 
   if (!d.tle1 || !d.tle2) return alert("No hay TLE para este debris."); 
+
+  const diasDiferencia = d.dias_diferencia; 
+  let mensajeDiferencia = ''; 
+  if (diasDiferencia !== undefined && diasDiferencia !== null) { 
+    const horas = (diasDiferencia * 24).toFixed(2); 
+    mensajeDiferencia = `<div class="alert alert-warning p-2" role="alert"><i class="bi bi-exclamation-triangle-fill me-2"></i><strong>Advertencia:</strong> Diferencia de tiempo estimada entre la caída y los últimos datos orbitales (TLE): <b>${horas} horas</b></div>`; 
+  } 
+  const infoDiv = document.getElementById('trayectoriaInfo'); 
+  if (infoDiv) { 
+    infoDiv.innerHTML = mensajeDiferencia; 
+  } 
+
   setTimeout(() => { 
     if (mapaTrayectoria) { mapaTrayectoria.remove(); mapaTrayectoria = null; } 
     mapaTrayectoria = L.map('mapTrayectoria').setView([d.lugar_caida.lat, d.lugar_caida.lon], 3); 
@@ -173,6 +185,7 @@ window.mostrarTrayectoria = function(index) {
       'https://wms.ign.gob.ar/geoserver/gwc/service/tms/1.0.0/capabaseargenmap@EPSG%3A3857@png/{z}/{x}/{-y}.png', 
       { minZoom: 1, maxZoom: 20 } 
     ).addTo(mapaTrayectoria); 
+    
     try {
       const satrec = satellite.twoline2satrec(d.tle1, d.tle2); 
       const meanMotion = satrec.no * 1440 / (2 * Math.PI); 
@@ -183,14 +196,14 @@ window.mostrarTrayectoria = function(index) {
       const year = satrec.epochyr < 57 ? satrec.epochyr + 2000 : satrec.epochyr + 1900; 
       const epochDate = new Date(Date.UTC(year, 0, 1, 0, 0, 0, 0) + (jday - 1) * 24 * 60 * 60 * 1000); 
       let segments = [], segment = [], prevLon = null; 
-      
       let hasValidPoints = false;
+
       for (let min = 0; min <= minutosATrazar; min += 1) { 
         const time = new Date(epochDate.getTime() + min * 60000); 
         const gmst = satellite.gstime(time); 
         const pos = satellite.propagate(satrec, time); 
 
-        if (!pos || !pos.position || isNaN(pos.position.x)) {
+        if (!pos || !pos.position || isNaN(pos.position.x) || isNaN(pos.position.y) || isNaN(pos.position.z)) {
           console.warn("Propagación de órbita fallida, saltando este punto.");
           continue;
         }
@@ -242,13 +255,14 @@ window.mostrarTrayectoria = function(index) {
       } 
     } catch (e) {
       console.error("Error al trazar la trayectoria:", e);
-      alert("Ocurrió un error al trazar la trayectoria. Los datos orbitales pueden estar corruptos.");
+      alert("Ocurrió un error al trazar la trayectoria. Los datos orbitales pueden estar corruptos o ser inválidos.");
       if (mapaTrayectoria) {
         mapaTrayectoria.remove();
         mapaTrayectoria = null;
       }
     }
   }, 300); 
+
   const modal = new bootstrap.Modal(document.getElementById('modalTrayectoria')); 
   modal.show(); 
 }; 
@@ -335,6 +349,16 @@ window.mostrarOrbita3D = function(index) {
   if (!d.tle1 || !d.tle2) { 
     return alert("No hay TLE para este debris."); 
   } 
+  const diasDiferencia = d.dias_diferencia; 
+  let mensajeDiferencia = ''; 
+  if (diasDiferencia !== undefined && diasDiferencia !== null) { 
+    const horas = (diasDiferencia * 24).toFixed(2); 
+    mensajeDiferencia = `<div class="alert alert-warning p-2" role="alert"><i class="bi bi-exclamation-triangle-fill me-2"></i><strong>Advertencia:</strong> Diferencia de tiempo estimada entre la caída y los últimos datos orbitales (TLE): <b>${horas} horas</b></div>`; 
+  } 
+  const infoDiv = document.getElementById('orbita3DInfo'); 
+  if (infoDiv) { 
+    infoDiv.innerHTML = mensajeDiferencia; 
+  } 
   const modalElement = document.getElementById('modalOrbita3D'); 
   const modal = new bootstrap.Modal(modalElement); 
   modalElement.addEventListener('shown.bs.modal', function onModalShown() { 
@@ -371,54 +395,48 @@ window.mostrarOrbita3D = function(index) {
       undefined, 
       function(error) { 
         console.error('Error al cargar la textura de la Tierra:', error); 
-        alert("Error al cargar la textura de la Tierra. Asegúrate de que el archivo 'earthmap1k.jpg' esté en la carpeta 'img'.");
       } 
     ); 
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.5); 
     scene.add(ambientLight); 
     plotOrbit(d); 
   } 
-  
   function plotOrbit(d) { 
-    let satrec;
     try {
-      satrec = satellite.twoline2satrec(d.tle1, d.tle2);
+        const satrec = satellite.twoline2satrec(d.tle1, d.tle2); 
+        const meanMotion = satrec.no * 1440 / (2 * Math.PI); 
+        const periodoMin = 1440 / meanMotion; 
+        const vueltas = 4; 
+        const minutosATrazar = periodoMin * vueltas; 
+        const epochDate = new Date(Date.UTC(satrec.epochyr < 57 ? satrec.epochyr + 2000 : satrec.epochyr + 1900, 0, 1) + (satrec.epochdays - 1) * 24 * 60 * 60 * 1000); 
+        const points = []; 
+
+        for (let min = 0; min <= minutosATrazar; min += 1) { 
+            const time = new Date(epochDate.getTime() + min * 60000); 
+            const gmst = satellite.gstime(time); 
+            const pos = satellite.propagate(satrec, time); 
+            
+            if (!pos || !pos.position || isNaN(pos.position.x) || isNaN(pos.position.y) || isNaN(pos.position.z)) {
+                console.warn("Propagación de órbita fallida, saltando este punto.");
+                continue;
+            }
+            
+            const eciPos = pos.position; 
+            points.push(new THREE.Vector3(eciPos.x, eciPos.z, -eciPos.y)); 
+        } 
+
+        if (points.length > 1) { 
+            const geometry = new THREE.BufferGeometry().setFromPoints(points); 
+            line = new THREE.Line(geometry, new THREE.LineBasicMaterial({ color: 0xff9900 })); 
+            scene.add(line); 
+        } else {
+            alert("No se pudo generar la órbita en 3D. Los datos orbitales son inválidos o están muy desactualizados.");
+        }
     } catch (e) {
-      console.error("Error al parsear los datos TLE:", e);
-      alert("Error al parsear los datos orbitales. Verifica la validez del TLE.");
-      return;
-    }
-
-    const meanMotion = satrec.no * 1440 / (2 * Math.PI); 
-    const periodoMin = 1440 / meanMotion; 
-    const vueltas = 4; 
-    const minutosATrazar = periodoMin * vueltas; 
-    const epochDate = new Date(Date.UTC(satrec.epochyr < 57 ? satrec.epochyr + 2000 : satrec.epochyr + 1900, 0, 1) + (satrec.epochdays - 1) * 24 * 60 * 60 * 1000); 
-    const points = []; 
-
-    for (let min = 0; min <= minutosATrazar; min += 1) { 
-      const time = new Date(epochDate.getTime() + min * 60000); 
-      const gmst = satellite.gstime(time); 
-      const pos = satellite.propagate(satrec, time); 
-
-      if (!pos || !pos.position || isNaN(pos.position.x)) {
-        console.warn("Propagación de órbita fallida, saltando este punto.");
-        continue;
-      }
-
-      const eciPos = pos.position; 
-      points.push(new THREE.Vector3(eciPos.x, eciPos.z, -eciPos.y)); 
-    } 
-
-    if (points.length > 1) { 
-      const geometry = new THREE.BufferGeometry().setFromPoints(points); 
-      line = new THREE.Line(geometry, new THREE.LineBasicMaterial({ color: 0xff9900 })); 
-      scene.add(line); 
-    } else {
-      alert("No se pudo generar la órbita en 3D. Los datos orbitales son inválidos o están muy desactualizados.");
+        console.error("Error al trazar la órbita 3D:", e);
+        alert("Ocurrió un error al trazar la órbita en 3D. Los datos orbitales pueden estar corruptos.");
     }
   } 
-  
   function animate() { 
     requestAnimationFrame(animate); 
     if (earth) { 
@@ -427,10 +445,10 @@ window.mostrarOrbita3D = function(index) {
     controls.update(); 
     renderer.render(scene, camera); 
   } 
-}; 
+ }; 
 
-document.addEventListener("DOMContentLoaded", ()=>{ 
+ document.addEventListener("DOMContentLoaded", ()=>{ 
   initMapa(); 
   listeners(); 
   cargarDatos(); 
-});
+ });
