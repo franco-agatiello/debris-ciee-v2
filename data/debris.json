@@ -19,7 +19,7 @@
     "apogeo": 145722.138,
     "perigeo": 172.613,
     "dias_diferencia": 0.0430787037037037
-  },  <--  ¡Aquí faltaba la coma!
+  },
   {
     "nombre": "METEOR 1-1",
     "pais": "COMMONWEALTH OF INDEPENDENT STATES",
