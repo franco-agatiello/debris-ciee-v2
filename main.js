@@ -330,9 +330,29 @@ window.mostrarOrbitaPlanta = function(index) {
 
 window.mostrarOrbita3D = function(index) {
   const d = filtrarDatos()[index];
+  
   if (!d.tle1 || !d.tle2) {
     return alert("No hay TLE para este debris.");
   }
+
+  // Obtiene la fecha de los datos TLE
+  const satrec = satellite.twoline2satrec(d.tle1, d.tle2);
+  const jday = satrec.epochdays;
+  const year = satrec.epochyr < 57 ? satrec.epochyr + 2000 : satrec.epochyr + 1900;
+  const epochDate = new Date(Date.UTC(year, 0, 1) + (jday - 1) * 24 * 60 * 60 * 1000);
+  const now = new Date();
+  const diffDays = (now - epochDate) / (1000 * 60 * 60 * 24);
+
+  // Define un umbral para la antigüedad de los TLE (ej. 30 días)
+  const daysThreshold = 30; 
+
+  if (diffDays > daysThreshold) {
+    const confirmacion = confirm(`Los datos de la órbita (TLE) para "${d.nombre}" tienen más de ${daysThreshold} días de antigüedad (${diffDays.toFixed(0)} días). La simulación podría ser muy imprecisa o fallar. ¿Deseas continuar de todos modos?`);
+    if (!confirmacion) {
+      return;
+    }
+  }
+
   const diasDiferencia = d.dias_diferencia;
   let mensajeDiferencia = '';
   if (diasDiferencia !== undefined && diasDiferencia !== null) {
@@ -399,7 +419,6 @@ window.mostrarOrbita3D = function(index) {
       const pos = satellite.propagate(satrec, time);
       if (!pos || !pos.position) continue;
       const eciPos = pos.position;
-      // Nueva validación para evitar valores NaN
       if (isNaN(eciPos.x) || isNaN(eciPos.y) || isNaN(eciPos.z)) {
         console.warn("Valores NaN encontrados. Se detiene el trazado de la órbita.");
         break; 
