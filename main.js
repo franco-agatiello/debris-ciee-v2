@@ -5,8 +5,8 @@ let debris = [];
 let mapa, capaPuntos, capaCalor, modo = "puntos";
 let leyendaPuntos, leyendaCalor;
 let mapaTrayectoria = null;
-let maxMasa = 0; // Nuevo: para el rango de masa
-let clasesObjeto = []; // Nuevo: para el filtro de clase de objeto
+let maxMasa = 0;
+let clasesObjeto = [];
 
 const radioTierra = 6371; // km
 
@@ -19,14 +19,14 @@ async function cargarDatos() {
     const resp = await fetch('data/debris.json');
     debris = await resp.json();
     maxMasa = debris.reduce((max, d) => Math.max(max, d.masa_orbital_kg || 0), 0);
-    clasesObjeto = Array.from(new Set(debris.map(d => d.clase_objeto).filter(c => c && c !== null)));
+    clasesObjeto = Array.from(new Set(debris.map(d => d.clase_objeto).filter(c => c !== null)));
     clasesObjeto.sort((a, b) => a.localeCompare(b, 'es'));
     poblarFiltros();
     actualizarMapa();
 }
 
 function poblarFiltros() {
-    const paises = Array.from(new Set(debris.map(d => d.pais).filter(p => p && p !== null)));
+    const paises = Array.from(new Set(debris.map(d => d.pais).filter(p => p !== null)));
     paises.sort((a,b) => a.localeCompare(b,'es'));
     const menuPais = document.getElementById("dropdownPaisMenu");
     menuPais.innerHTML = `<li><a class="dropdown-item" href="#" data-value="">Todos</a></li>` +
@@ -40,7 +40,6 @@ function poblarFiltros() {
       });
     });
 
-    // Nuevo: Poblar filtro de clase de objeto
     const menuClase = document.getElementById("dropdownClaseMenu");
     menuClase.innerHTML = `<li><a class="dropdown-item" href="#" data-value="">Todos</a></li>` +
       clasesObjeto.map(c => `<li><a class="dropdown-item" href="#" data-value="${c}">${c}</a></li>`).join('');
@@ -53,7 +52,6 @@ function poblarFiltros() {
       });
     });
 
-    // Nuevo: Configurar controles deslizantes de rango
     const inclinacionMinSlider = document.getElementById("inclinacion-min");
     const inclinacionMaxSlider = document.getElementById("inclinacion-max");
     const inclinacionMinVal = document.getElementById("inclinacion-min-val");
@@ -106,13 +104,13 @@ function poblarFiltros() {
 function obtenerFiltros() {
     return {
       pais: document.getElementById("dropdownPaisBtn").dataset.value ?? "",
-      claseObjeto: document.getElementById("dropdownClaseBtn").dataset.value ?? "", // Nuevo
+      claseObjeto: document.getElementById("dropdownClaseBtn").dataset.value ?? "",
       fechaDesde: document.getElementById("fecha-desde").value,
       fechaHasta: document.getElementById("fecha-hasta").value,
       inclinacionMin: document.getElementById("inclinacion-min").value,
       inclinacionMax: document.getElementById("inclinacion-max").value,
-      masaMin: document.getElementById("masa-min").value, // Nuevo
-      masaMax: document.getElementById("masa-max").value // Nuevo
+      masaMin: document.getElementById("masa-min").value,
+      masaMax: document.getElementById("masa-max").value
     };
 }
 
@@ -120,13 +118,13 @@ function filtrarDatos() {
     const filtros = obtenerFiltros();
     return debris.filter(d=>{
       if (filtros.pais && d.pais !== filtros.pais) return false;
-      if (filtros.claseObjeto && d.clase_objeto !== filtros.claseObjeto) return false; // Nuevo
+      if (filtros.claseObjeto && d.clase_objeto !== filtros.claseObjeto) return false;
       if (filtros.fechaDesde && d.fecha < filtros.fechaDesde) return false;
       if (filtros.fechaHasta && d.fecha > filtros.fechaHasta) return false;
-      if (filtros.inclinacionMin && Number(d.inclinacion_orbita) < Number(filtros.inclinacionMin)) return false;
-      if (filtros.inclinacionMax && Number(d.inclinacion_orbita) > Number(filtros.inclinacionMax)) return false;
-      if (filtros.masaMin && Number(d.masa_orbital_kg) < Number(filtros.masaMin)) return false; // Nuevo
-      if (filtros.masaMax && Number(d.masa_orbital_kg) > Number(filtros.masaMax)) return false; // Nuevo
+      if (filtros.inclinacionMin && (d.inclinacion_orbita === null || Number(d.inclinacion_orbita) < Number(filtros.inclinacionMin))) return false;
+      if (filtros.inclinacionMax && (d.inclinacion_orbita === null || Number(d.inclinacion_orbita) > Number(filtros.inclinacionMax))) return false;
+      if (filtros.masaMin && (d.masa_orbital_kg === null || Number(d.masa_orbital_kg) < Number(filtros.masaMin))) return false;
+      if (filtros.masaMax && (d.masa_orbital_kg === null || Number(d.masa_orbital_kg) > Number(filtros.masaMax))) return false;
       return true;
     });
 }
@@ -147,8 +145,8 @@ function actualizarBotonesModo() {
 function popupContenidoDebris(d,index){
     let contenido = `<strong>${d.nombre ?? ''}</strong><br>`;
     if(d.pais) contenido += `País: ${d.pais}<br>`;
-    if(d.clase_objeto) contenido += `Clase: ${d.clase_objeto}<br>`; // Nuevo
-    if(d.masa_orbital_kg !== null && d.masa_orbital_kg !== undefined) contenido += `Masa orbital: ${d.masa_orbital_kg} kg<br>`; // Nuevo
+    if(d.clase_objeto) contenido += `Clase: ${d.clase_objeto}<br>`;
+    if(d.masa_orbital_kg !== null && d.masa_orbital_kg !== undefined) contenido += `Masa orbital: ${d.masa_orbital_kg} kg<br>`;
     if(d.tamano_caida_kg !== null && d.tamano_caida_kg !== undefined) contenido += `Masa caída: ${d.tamano_caida_kg} kg<br>`;
     if(d.material_principal) contenido += `Material: ${d.material_principal}<br>`;
     if(d.inclinacion_orbita !== null && d.inclinacion_orbita !== undefined) contenido += `Inclinación órbita: ${d.inclinacion_orbita}°<br>`;
