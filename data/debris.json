@@ -1,11 +1,11 @@
 [
- {
+  {
     "nombre": "ATLAS AGENA D R/B",
     "pais": "UNITED STATES OF AMERICA",
     "tamano_caida_kg": null,
     "material_principal": null,
-    "clase_objeto": "Cuerpo de Cohete",
-    "masa_orbital_kg": 500,
+    "clase_objeto": "Cuerpo de Cohete",
+    "masa_orbital_kg": 500,
     "fecha": "2011-01-18",
     "inclinacion_orbita": 47.5,
     "lugar_caida": {
@@ -25,8 +25,8 @@
     "pais": "COMMONWEALTH OF INDEPENDENT STATES",
     "tamano_caida_kg": null,
     "material_principal": null,
-    "clase_objeto": "Satélite",
-    "masa_orbital_kg": 1200,
+    "clase_objeto": "Satélite",
+    "masa_orbital_kg": 1200,
     "fecha": "2012-03-26",
     "inclinacion_orbita": 81.1,
     "lugar_caida": {
