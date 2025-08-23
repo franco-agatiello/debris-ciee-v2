@@ -166,7 +166,6 @@ function listeners(){
 window.mostrarTrayectoria = function(index) { 
   const d = filtrarDatos()[index]; 
   if (!d.tle1 || !d.tle2) return alert("No hay TLE para este debris."); 
-
   const diasDiferencia = d.dias_diferencia; 
   let mensajeDiferencia = ''; 
   if (diasDiferencia !== undefined && diasDiferencia !== null) { 
@@ -177,7 +176,6 @@ window.mostrarTrayectoria = function(index) {
   if (infoDiv) { 
     infoDiv.innerHTML = mensajeDiferencia; 
   } 
-
   setTimeout(() => { 
     if (mapaTrayectoria) { mapaTrayectoria.remove(); mapaTrayectoria = null; } 
     mapaTrayectoria = L.map('mapTrayectoria').setView([d.lugar_caida.lat, d.lugar_caida.lon], 3); 
@@ -185,84 +183,50 @@ window.mostrarTrayectoria = function(index) {
       'https://wms.ign.gob.ar/geoserver/gwc/service/tms/1.0.0/capabaseargenmap@EPSG%3A3857@png/{z}/{x}/{-y}.png', 
       { minZoom: 1, maxZoom: 20 } 
     ).addTo(mapaTrayectoria); 
-    
-    try {
-      const satrec = satellite.twoline2satrec(d.tle1, d.tle2); 
-      const meanMotion = satrec.no * 1440 / (2 * Math.PI); 
-      const periodoMin = 1440 / meanMotion; 
-      const vueltas = 4; 
-      const minutosATrazar = periodoMin * vueltas; 
-      const jday = satrec.epochdays; 
-      const year = satrec.epochyr < 57 ? satrec.epochyr + 2000 : satrec.epochyr + 1900; 
-      const epochDate = new Date(Date.UTC(year, 0, 1, 0, 0, 0, 0) + (jday - 1) * 24 * 60 * 60 * 1000); 
-      let segments = [], segment = [], prevLon = null; 
-      let hasValidPoints = false;
-
-      for (let min = 0; min <= minutosATrazar; min += 1) { 
-        const time = new Date(epochDate.getTime() + min * 60000); 
-        const gmst = satellite.gstime(time); 
-        const pos = satellite.propagate(satrec, time); 
-
-        if (!pos || !pos.position || isNaN(pos.position.x) || isNaN(pos.position.y) || isNaN(pos.position.z)) {
-          console.warn("Propagación de órbita fallida, saltando este punto.");
-          continue;
-        }
-
-        hasValidPoints = true;
-        const geo = satellite.eciToGeodetic(pos.position, gmst); 
-        let lat = satellite.degreesLat(geo.latitude); 
-        let lon = satellite.degreesLong(geo.longitude); 
-        
-        if (isNaN(lat) || isNaN(lon) || Math.abs(lat) > 90) {
-          console.warn("Coordenadas inválidas, saltando este punto.");
-          continue;
-        }
-
-        lon = ((lon + 180) % 360 + 360) % 360 - 180; 
-        if (prevLon !== null) { 
-          let delta = Math.abs(lon - prevLon); 
-          if (delta > 30) { 
-            if (segment.length > 1) segments.push(segment); 
-            segment = []; 
-          } 
+    const satrec = satellite.twoline2satrec(d.tle1, d.tle2); 
+    const meanMotion = satrec.no * 1440 / (2 * Math.PI); 
+    const periodoMin = 1440 / meanMotion; 
+    const vueltas = 4; 
+    const minutosATrazar = periodoMin * vueltas; 
+    const jday = satrec.epochdays; 
+    const year = satrec.epochyr < 57 ? satrec.epochyr + 2000 : satrec.epochyr + 1900; 
+    const epochDate = new Date(Date.UTC(year, 0, 1, 0, 0, 0, 0) + (jday - 1) * 24 * 60 * 60 * 1000); 
+    let segments = [], segment = [], prevLon = null; 
+    for (let min = 0; min <= minutosATrazar; min += 1) { 
+      const time = new Date(epochDate.getTime() + min * 60000); 
+      const gmst = satellite.gstime(time); 
+      const pos = satellite.propagate(satrec, time); 
+      if (!pos || !pos.position) continue; 
+      const geo = satellite.eciToGeodetic(pos.position, gmst); 
+      let lat = satellite.degreesLat(geo.latitude); 
+      let lon = satellite.degreesLong(geo.longitude); 
+      if (isNaN(lat) || isNaN(lon) || Math.abs(lat) > 90) continue; 
+      lon = ((lon + 180) % 360 + 360) % 360 - 180; 
+      if (prevLon !== null) { 
+        let delta = Math.abs(lon - prevLon); 
+        if (delta > 30) { 
+          if (segment.length > 1) segments.push(segment); 
+          segment = []; 
         } 
-        segment.push([lat, lon]); 
-        prevLon = lon; 
       } 
-      if (segment.length > 1) segments.push(segment); 
-      
-      if (!hasValidPoints && segments.length === 0) {
-        alert("No se pudo generar la trayectoria. Los datos orbitales pueden estar desactualizados o ser incorrectos.");
-        mapaTrayectoria.remove();
-        mapaTrayectoria = null;
-        return;
-      }
-      
-      segments.forEach(seg => { 
-        L.polyline(seg, { color: "#3f51b5", weight: 2 }).addTo(mapaTrayectoria); 
-      }); 
-      
-      L.marker([d.lugar_caida.lat, d.lugar_caida.lon]) 
-        .addTo(mapaTrayectoria) 
-        .bindPopup("Punto de caída") 
-        .openPopup(); 
-      
-      if (segments.length && segments[0].length > 1) { 
-        let bounds = segments.flat(); 
-        mapaTrayectoria.fitBounds(bounds, {padding: [20, 20]}); 
-      } else { 
-        mapaTrayectoria.setView([d.lugar_caida.lat, d.lugar_caida.lon], 3); 
-      } 
-    } catch (e) {
-      console.error("Error al trazar la trayectoria:", e);
-      alert("Ocurrió un error al trazar la trayectoria. Los datos orbitales pueden estar corruptos o ser inválidos.");
-      if (mapaTrayectoria) {
-        mapaTrayectoria.remove();
-        mapaTrayectoria = null;
-      }
-    }
+      segment.push([lat, lon]); 
+      prevLon = lon; 
+    } 
+    if (segment.length > 1) segments.push(segment); 
+    segments.forEach(seg => { 
+      L.polyline(seg, { color: "#3f51b5", weight: 2 }).addTo(mapaTrayectoria); 
+    }); 
+    L.marker([d.lugar_caida.lat, d.lugar_caida.lon]) 
+      .addTo(mapaTrayectoria) 
+      .bindPopup("Punto de caída") 
+      .openPopup(); 
+    if (segments.length && segments[0].length > 1) { 
+      let bounds = segments.flat(); 
+      mapaTrayectoria.fitBounds(bounds, {padding: [20, 20]}); 
+    } else { 
+      mapaTrayectoria.setView([d.lugar_caida.lat, d.lugar_caida.lon], 3); 
+    } 
   }, 300); 
-
   const modal = new bootstrap.Modal(document.getElementById('modalTrayectoria')); 
   modal.show(); 
 }; 
@@ -342,9 +306,9 @@ window.mostrarOrbitaPlanta = function(index) {
   } 
   const modal = new bootstrap.Modal(document.getElementById('modalOrbitaPlanta')); 
   modal.show(); 
-}; 
+ }; 
 
-window.mostrarOrbita3D = function(index) { 
+ window.mostrarOrbita3D = function(index) { 
   const d = filtrarDatos()[index]; 
   if (!d.tle1 || !d.tle2) { 
     return alert("No hay TLE para este debris."); 
@@ -402,40 +366,26 @@ window.mostrarOrbita3D = function(index) {
     plotOrbit(d); 
   } 
   function plotOrbit(d) { 
-    try {
-        const satrec = satellite.twoline2satrec(d.tle1, d.tle2); 
-        const meanMotion = satrec.no * 1440 / (2 * Math.PI); 
-        const periodoMin = 1440 / meanMotion; 
-        const vueltas = 4; 
-        const minutosATrazar = periodoMin * vueltas; 
-        const epochDate = new Date(Date.UTC(satrec.epochyr < 57 ? satrec.epochyr + 2000 : satrec.epochyr + 1900, 0, 1) + (satrec.epochdays - 1) * 24 * 60 * 60 * 1000); 
-        const points = []; 
-
-        for (let min = 0; min <= minutosATrazar; min += 1) { 
-            const time = new Date(epochDate.getTime() + min * 60000); 
-            const gmst = satellite.gstime(time); 
-            const pos = satellite.propagate(satrec, time); 
-            
-            if (!pos || !pos.position || isNaN(pos.position.x) || isNaN(pos.position.y) || isNaN(pos.position.z)) {
-                console.warn("Propagación de órbita fallida, saltando este punto.");
-                continue;
-            }
-            
-            const eciPos = pos.position; 
-            points.push(new THREE.Vector3(eciPos.x, eciPos.z, -eciPos.y)); 
-        } 
-
-        if (points.length > 1) { 
-            const geometry = new THREE.BufferGeometry().setFromPoints(points); 
-            line = new THREE.Line(geometry, new THREE.LineBasicMaterial({ color: 0xff9900 })); 
-            scene.add(line); 
-        } else {
-            alert("No se pudo generar la órbita en 3D. Los datos orbitales son inválidos o están muy desactualizados.");
-        }
-    } catch (e) {
-        console.error("Error al trazar la órbita 3D:", e);
-        alert("Ocurrió un error al trazar la órbita en 3D. Los datos orbitales pueden estar corruptos.");
-    }
+    const satrec = satellite.twoline2satrec(d.tle1, d.tle2); 
+    const meanMotion = satrec.no * 1440 / (2 * Math.PI); 
+    const periodoMin = 1440 / meanMotion; 
+    const vueltas = 4; 
+    const minutosATrazar = periodoMin * vueltas; 
+    const epochDate = new Date(Date.UTC(satrec.epochyr < 57 ? satrec.epochyr + 2000 : satrec.epochyr + 1900, 0, 1) + (satrec.epochdays - 1) * 24 * 60 * 60 * 1000); 
+    const points = []; 
+    for (let min = 0; min <= minutosATrazar; min += 1) { 
+      const time = new Date(epochDate.getTime() + min * 60000); 
+      const gmst = satellite.gstime(time); 
+      const pos = satellite.propagate(satrec, time); 
+      if (!pos || !pos.position) continue; 
+      const eciPos = pos.position; 
+      points.push(new THREE.Vector3(eciPos.x, eciPos.z, -eciPos.y)); 
+    } 
+    if (points.length > 1) { 
+      const geometry = new THREE.BufferGeometry().setFromPoints(points); 
+      line = new THREE.Line(geometry, new THREE.LineBasicMaterial({ color: 0xff9900 })); 
+      scene.add(line); 
+    } 
   } 
   function animate() { 
     requestAnimationFrame(animate); 
