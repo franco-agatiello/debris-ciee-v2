@@ -2,61 +2,55 @@
   {
     "nombre": "ATLAS AGENA D R/B",
     "pais": "UNITED STATES OF AMERICA",
-    "tamano_caida_kg": 1500,
+    "masa_en_orbita": 900,
+    "clase_objeto": "Cohete",
+    "tamano_caida_kg": null,
     "material_principal": null,
     "fecha": "2011-01-18",
     "inclinacion_orbita": 47.5,
-    "lugar_caida": {
-      "lat": 45.0,
-      "lon": -87.0
-    },
+    "lugar_caida": { "lat": 45.0, "lon": -87.0 },
     "imagen": null,
     "tle1": "1 03145U 68014B   11018.33679383 -.00007350 +60653-5 +00000-0 0  9996",
     "tle2": "2 03145 047.9216 051.8690 9174194 109.4430 352.9566 00.38858306057648",
     "a": 79325.511,
     "apogeo": 145722.138,
     "perigeo": 172.613,
-    "dias_diferencia": 0.0430787037037037,
-    "clase": "Fragmento"
+    "dias_diferencia": 0.0430787037037037
   },
   {
     "nombre": "METEOR 1-1",
     "pais": "COMMONWEALTH OF INDEPENDENT STATES",
-    "tamano_caida_kg": 1200,
+    "masa_en_orbita": 1700,
+    "clase_objeto": "Satélite",
+    "tamano_caida_kg": null,
     "material_principal": null,
     "fecha": "2012-03-26",
     "inclinacion_orbita": 81.1,
-    "lugar_caida": {
-      "lat": 47.0,
-      "lon": 95.0
-    },
+    "lugar_caida": { "lat": 47.0, "lon": 95.0 },
     "imagen": null,
     "tle1": "1 03835U 69029A   12086.76135367  .25198191 -97535-6  25232-3 0  9999",
     "tle2": "2 03835 081.1165 230.5329 0011418 263.0265 097.6822 16.50605120355155",
     "a": 6515.884,
     "apogeo": 145.189,
     "perigeo": 130.309,
-    "dias_diferencia": 0.12893518518518518,
-    "clase": "Satélite"
+    "dias_diferencia": 0.12893518518518518
   },
   {
     "nombre": "SL-3 R/B",
     "pais": "COMMONWEALTH OF INDEPENDENT STATES",
-    "tamano_caida_kg": 2500,
+    "masa_en_orbita": 2200,
+    "clase_objeto": "Cohete",
+    "tamano_caida_kg": null,
     "material_principal": null,
     "fecha": "2024-10-25",
     "inclinacion_orbita": 81.2,
-    "lugar_caida": {
-      "lat": 72.3,
-      "lon": -32.19999999999999
-    },
+    "lugar_caida": { "lat": 72.3, "lon": -32.2 },
     "imagen": null,
     "tle1": "1  4394U 70037B   24299.51796145  .99999999 -14140-5  66514-3 0  9994",
     "tle2": "2  4394  81.1936  58.2036 0012784 306.3071 180.0358 16.57086830977389",
     "a": 6498.877,
     "apogeo": 129.05,
     "perigeo": 112.434,
-    "dias_diferencia": 0.05982638888888889,
-    "clase": "Etapa de cohete"
+    "dias_diferencia": 0.05982638888888889
   }
 ]
