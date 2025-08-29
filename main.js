@@ -48,27 +48,14 @@ function poblarFiltros() {
         actualizarMapa();
       });
     });
-
-    const caidas = Array.from(new Set(debris.map(d => d.caida).filter(c => c && c !== null)));
-    caidas.sort((a,b) => a.localeCompare(b,'es'));
-    const menuCaida = document.getElementById("dropdownCaidaMenu");
-    menuCaida.innerHTML = `<li><a class="dropdown-item" href="#" data-value="">Todos</a></li>` +
-      caidas.map(c => `<li><a class="dropdown-item" href="#" data-value="${c}">${c}</a></li>`).join('');
-    menuCaida.querySelectorAll('.dropdown-item').forEach(item=>{
-      item.addEventListener('click', function(e){
-        e.preventDefault();
-        document.getElementById('dropdownCaidaBtn').textContent = this.textContent;
-        document.getElementById('dropdownCaidaBtn').dataset.value = this.dataset.value;
-        actualizarMapa();
-      });
-    });
 } 
 
 function obtenerFiltros() {
     return {
       pais: document.getElementById("dropdownPaisBtn").dataset.value ?? "",
       clase: document.getElementById("dropdownClaseBtn").dataset.value ?? "",
-      caida: document.getElementById("dropdownCaidaBtn").dataset.value ?? "",
+      masaMin: document.getElementById("masa-min").value,
+      masaMax: document.getElementById("masa-max").value,
       fechaDesde: document.getElementById("fecha-desde").value,
       fechaHasta: document.getElementById("fecha-hasta").value,
       inclinacionMin: document.getElementById("inclinacion-min").value,
@@ -81,7 +68,8 @@ function filtrarDatos() {
     return debris.filter(d=>{
       if (filtros.pais && d.pais !== filtros.pais) return false;
       if (filtros.clase && d.clase !== filtros.clase) return false;
-      if (filtros.caida && d.caida !== filtros.caida) return false;
+      if (filtros.masaMin && d.tamano_caida_kg < Number(filtros.masaMin)) return false;
+      if (filtros.masaMax && d.tamano_caida_kg > Number(filtros.masaMax)) return false;
       if (filtros.fechaDesde && d.fecha < filtros.fechaDesde) return false;
       if (filtros.fechaHasta && d.fecha > filtros.fechaHasta) return false;
       if (filtros.inclinacionMin && Number(d.inclinacion_orbita) < Number(filtros.inclinacionMin)) return false;
@@ -111,7 +99,6 @@ function popupContenidoDebris(d,index){ 
    if(d.inclinacion_orbita !== null && d.inclinacion_orbita !== undefined) contenido += `Inclinación órbita: ${d.inclinacion_orbita}°<br>`; 
    if(d.fecha) contenido += `Fecha: ${d.fecha}<br>`; 
    if(d.clase) contenido += `Clase: ${d.clase}<br>`;
-   if(d.caida) contenido += `Lugar de caída: ${d.caida}<br>`;
    if(d.imagen) contenido += `<img src="${d.imagen}" alt="${d.nombre}"><br>`; 
    if(d.tle1 && d.tle2) { 
      contenido += `<button class="btn btn-sm btn-info mt-2" onclick="mostrarTrayectoria(${index})">Ver trayectoria</button>`; 
@@ -190,7 +177,7 @@ function initMapa() { 
 } 
 
 function listeners(){ 
-   ["fecha-desde","fecha-hasta","inclinacion-min","inclinacion-max"].forEach(id=>{ 
+   ["fecha-desde","fecha-hasta","inclinacion-min","inclinacion-max","masa-min","masa-max"].forEach(id=>{ 
      document.getElementById(id).addEventListener("change",actualizarMapa); 
    }); 
    document.getElementById("modo-puntos").addEventListener("click",()=>{modo="puntos"; actualizarMapa();}); 
