@@ -27,6 +27,22 @@
             <ul class="dropdown-menu w-100" aria-labelledby="dropdownPaisBtn" id="dropdownPaisMenu" style="max-height:220px; overflow-y:auto;">
               </ul>
           </div>
+          <label for="clase-dropdown">Clase del objeto:</label>
+          <div class="dropdown mb-2" id="clase-dropdown">
+            <button class="btn btn-outline-secondary dropdown-toggle w-100" type="button" id="dropdownClaseBtn" data-bs-toggle="dropdown" aria-expanded="false">
+              Seleccionar clase
+            </button>
+            <ul class="dropdown-menu w-100" aria-labelledby="dropdownClaseBtn" id="dropdownClaseMenu" style="max-height:220px; overflow-y:auto;">
+              </ul>
+          </div>
+          <label for="caida-dropdown">Lugar de caída:</label>
+          <div class="dropdown mb-2" id="caida-dropdown">
+            <button class="btn btn-outline-secondary dropdown-toggle w-100" type="button" id="dropdownCaidaBtn" data-bs-toggle="dropdown" aria-expanded="false">
+              Seleccionar lugar
+            </button>
+            <ul class="dropdown-menu w-100" aria-labelledby="dropdownCaidaBtn" id="dropdownCaidaMenu" style="max-height:220px; overflow-y:auto;">
+              </ul>
+          </div>
           <label for="fecha-desde">Fecha desde:</label>
           <input type="date" class="form-control mb-2" id="fecha-desde"/>
           <label for="fecha-hasta">Fecha hasta:</label>
@@ -39,23 +55,6 @@
             <div class="col">
               <input type="number" class="form-control" id="inclinacion-max" placeholder="Máx" min="0" max="180">
             </div>
-          </div>
-          <label for="masa-min">Masa orbital (kg):</label>
-          <div class="row g-1 mb-2">
-            <div class="col">
-              <input type="number" class="form-control" id="masa-min" placeholder="Mín" min="0">
-            </div>
-            <div class="col">
-              <input type="number" class="form-control" id="masa-max" placeholder="Máx" min="0">
-            </div>
-          </div>
-          <label for="clase-dropdown">Clase de objeto:</label>
-          <div class="dropdown mb-2" id="clase-dropdown">
-            <button class="btn btn-outline-secondary dropdown-toggle w-100" type="button" id="dropdownClaseBtn" data-bs-toggle="dropdown" aria-expanded="false">
-              Seleccionar clase
-            </button>
-            <ul class="dropdown-menu w-100" aria-labelledby="dropdownClaseBtn" id="dropdownClaseMenu" style="max-height:220px; overflow-y:auto;">
-            </ul>
           </div>
         </form>
         <div class="mt-4 d-grid gap-2">
